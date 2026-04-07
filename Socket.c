@@ -14,7 +14,7 @@
 #include <linux/if_packet.h>// struct sockaddr_ll (Camada 2)
 #include <net/ethernet.h>   // struct ethhdr (Cabeçalho Ethernet)
 
-struct global_sequence{
+struct __attribute__((packed)) global_sequence{
     uint8_t value : 6 ; 
 } global_sequence = {0};
 
@@ -23,50 +23,67 @@ struct __attribute__((packed)) message {
     uint8_t size : 5;
     uint8_t sequence : 6;
     uint8_t type : 5;
-    long* data;
+    uint8_t data[32];
     uint8_t CRC;
 };
 
 //esse int na verdade é um file descriptor
 int create_raw_socket(char* interface_name) {
-    int status;
+    int32_t status;
     // Cria arquivo para o socket sem qualquer protocolo
-    int socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-    assert(socket); //Verifique se você é root
- 
-    int ifindex = if_nametoindex(interface_name);
+    int32_t pac_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    if(pac_socket == 0)
+    {
+        fprintf(stderr, "Erro ao criar socket! {create_raw_socket}\n");
+        exit(EXIT_FAILURE);
+    }
+
+    uint32_t ifindex = if_nametoindex(interface_name);
  
     struct sockaddr_ll address = {0};
     address.sll_family = AF_PACKET;
     address.sll_protocol = htons(ETH_P_ALL);
-    address.sll_ifindex = ifindex;
+    address.sll_ifindex = (int)ifindex;
 
     // Inicializa socket
-    status = bind(socket, (struct sockaddr*) &address, sizeof(address));
-    assert(status);
+    status = bind(pac_socket, (struct sockaddr*) &address, sizeof(address));
+    if(status == 0)
+    {
+        fprintf(stderr, "Erro ao conectar endereço ao socket! {create_raw_socket}\n");
+        exit(EXIT_FAILURE);
+    }
  
     struct packet_mreq mr = {0};
-    mr.mr_ifindex = ifindex;
+    mr.mr_ifindex = (int)ifindex;
     mr.mr_type = PACKET_MR_PROMISC;
-    // Não joga fora o que identifica como lixo: Modo promíscuo
-    int status = setsockopt(socket, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr));
-    assert(status);
 
-    return socket;
+    // Não joga fora o que identifica como lixo: Modo promíscuo
+    status = setsockopt(pac_socket, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr));
+    if(status == 0)
+    {
+        fprintf(stderr, "Erro ao setar socket como promiscuo! {create_raw_socket}\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return pac_socket;
 }
 
-struct message* create_message(unsigned int size, unsigned int type, int* data){
+struct message* create_message(uint32_t size, uint32_t type, uint8_t data[32]){
     struct message* new_message = malloc(sizeof(struct message));
-    assert(new_message);
+    if(new_message == 0)
+    {
+        fprintf(stderr, "Erro ao criar mensagem! {create_message}\n");
+        exit(EXIT_FAILURE);
+    }
 
     new_message->start_marker = 126;
-    new_message->size = size;
+    new_message->size = (uint8_t)(size & 0x1F);
     
-    new_message->sequence = global_sequence.value;
-    global_sequence.value ++;
+    new_message->sequence = (uint8_t)(global_sequence.value & 0x3F);
+    global_sequence.value++;
 
-    new_message->type = type;
-    new_message->type = data;
+    new_message->type = (uint8_t)(type & 0x1F);
+    memcpy(new_message->data, data, sizeof(new_message->data));
     new_message->CRC = 1;
 
     return new_message;
