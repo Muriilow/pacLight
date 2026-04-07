@@ -88,3 +88,31 @@ struct message* create_message(uint32_t size, uint32_t type, uint8_t data[32]){
 
     return new_message;
 }
+
+void send_message(int pac_socket, int ifindex, struct message* message)
+{
+    struct sockaddr_ll dest = {0};
+    dest.sll_family = AF_PACKET;
+    dest.sll_ifindex = ifindex;
+    dest.sll_halen = ETH_ALEN;
+
+    // No loopback, o endereço MAC costuma ser tudo zero
+    memset(dest.sll_addr, 0, 6);
+
+    ssize_t send_bytes = sendto
+    (
+        pac_socket,
+        message,
+        sizeof(struct message),
+        0,
+        (struct sockaddr*)&dest,
+        sizeof(struct sockaddr_ll)
+    );
+
+    if(send_bytes == -1) {
+        fprintf(stderr, "Erro ao enviar pacote {send_message}\n");
+    }
+    else {
+        printf("Mensagem enviada: %zd bytes enviados ns interface %d\n", send_bytes, ifindex);
+    }
+}
