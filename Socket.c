@@ -27,33 +27,34 @@ struct message {
 };
 
 //esse int na verdade é um file descriptor
-int cria_raw_socket(char* nome_interface_rede) {
+int create_raw_socket(char* interface_name) {
     int status;
     // Cria arquivo para o socket sem qualquer protocolo
-    int soquete = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-    assert(soquete); //Verifique se você é root
+    int socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    assert(socket); //Verifique se você é root
  
-    int ifindex = if_nametoindex(nome_interface_rede);
+    int ifindex = if_nametoindex(interface_name);
  
-    struct sockaddr_ll endereco = {0};
-    endereco.sll_family = AF_PACKET;
-    endereco.sll_protocol = htons(ETH_P_ALL);
-    endereco.sll_ifindex = ifindex;
+    struct sockaddr_ll address = {0};
+    address.sll_family = AF_PACKET;
+    address.sll_protocol = htons(ETH_P_ALL);
+    address.sll_ifindex = ifindex;
+
     // Inicializa socket
-    status = bind(soquete, (struct sockaddr*) &endereco, sizeof(endereco));
+    status = bind(socket, (struct sockaddr*) &address, sizeof(address));
     assert(status);
  
     struct packet_mreq mr = {0};
     mr.mr_ifindex = ifindex;
     mr.mr_type = PACKET_MR_PROMISC;
     // Não joga fora o que identifica como lixo: Modo promíscuo
-    int status = setsockopt(soquete, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr));
+    int status = setsockopt(socket, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr));
     assert(status);
 
-    return soquete;
+    return socket;
 }
 
-struct message* cria_mensagem(unsigned int size, unsigned int type, int* data){
+struct message* create_message(unsigned int size, unsigned int type, int* data){
     struct message* new_message = malloc(sizeof(struct message));
     assert(new_message);
 
