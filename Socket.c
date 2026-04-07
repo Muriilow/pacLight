@@ -8,22 +8,23 @@
 #include <arpa/inet.h>      // htons() e manipulação de endereços
 #include <sys/ioctl.h>      // ioctl() para configurar a placa de rede
 #include <net/if.h>         // struct ifreq (para achar a eth0)
-
+#include <stdint.h>         // uint
+                            //
 // Cabeçalhos de Protocolo
 #include <linux/if_packet.h>// struct sockaddr_ll (Camada 2)
 #include <net/ethernet.h>   // struct ethhdr (Cabeçalho Ethernet)
 
 struct global_sequence{
-    unsigned int value : 6 ; 
+    uint8_t value : 6 ; 
 } global_sequence = {0};
 
-struct message {
-    unsigned int start_marker : 8;
-    unsigned int size : 5;
-    unsigned int sequence : 6;
-    unsigned int type : 5;
-    long* data ;
-    unsigned int CRC : 8;
+struct __attribute__((packed)) message {
+    uint8_t start_marker;
+    uint8_t size : 5;
+    uint8_t sequence : 6;
+    uint8_t type : 5;
+    long* data;
+    uint8_t CRC;
 };
 
 //esse int na verdade é um file descriptor
