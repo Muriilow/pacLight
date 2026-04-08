@@ -1,0 +1,24 @@
+#ifndef SOCKET_H
+#define SOCKET_H
+
+#include <stdint.h>
+
+struct __attribute__((packed)) global_sequence{
+    uint8_t value : 6 ; 
+};
+
+struct __attribute__((packed)) message {
+    uint8_t start_marker;
+    uint8_t size : 5;
+    uint8_t sequence : 6;
+    uint8_t type : 5;
+    uint8_t data[32];
+    uint8_t CRC;
+};
+
+extern struct global_sequence global_sequence;
+int create_raw_socket(uint32_t ifindex);
+struct message* create_message(uint32_t size, uint32_t type, uint8_t data[32]);
+void send_message(int pac_socket, int ifindex, struct message* message);
+
+#endif

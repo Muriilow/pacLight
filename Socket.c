@@ -14,40 +14,35 @@
 #include <linux/if_packet.h>// struct sockaddr_ll (Camada 2)
 #include <net/ethernet.h>   // struct ethhdr (Cabeçalho Ethernet)
 
-struct __attribute__((packed)) global_sequence{
-    uint8_t value : 6 ; 
-} global_sequence = {0};
+// Cabecalhos locais
+#include "Socket.h"
 
-struct __attribute__((packed)) message {
-    uint8_t start_marker;
-    uint8_t size : 5;
-    uint8_t sequence : 6;
-    uint8_t type : 5;
-    uint8_t data[32];
-    uint8_t CRC;
-};
+struct global_sequence global_sequence = {0};
 
 //esse int na verdade é um file descriptor
-int create_raw_socket(char* interface_name) {
+int create_raw_socket(uint32_t ifindex) {
     int32_t status;
     // Cria arquivo para o socket sem qualquer protocolo
     int32_t pac_socket = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-    if(pac_socket == 0)
+    if(pac_socket < 0)
     {
         fprintf(stderr, "Erro ao criar socket! {create_raw_socket}\n");
         exit(EXIT_FAILURE);
     }
 
-    uint32_t ifindex = if_nametoindex(interface_name);
- 
+    if (ifindex == 0) {
+        fprintf(stderr, "Interface %d não encontrada!\n", ifindex);
+        exit(EXIT_FAILURE);
+    }
+
     struct sockaddr_ll address = {0};
     address.sll_family = AF_PACKET;
     address.sll_protocol = htons(ETH_P_ALL);
-    address.sll_ifindex = (int)ifindex;
+    address.sll_ifindex = (uint32_t)ifindex;
 
     // Inicializa socket
     status = bind(pac_socket, (struct sockaddr*) &address, sizeof(address));
-    if(status == 0)
+    if(status < 0)
     {
         fprintf(stderr, "Erro ao conectar endereço ao socket! {create_raw_socket}\n");
         exit(EXIT_FAILURE);
@@ -59,7 +54,7 @@ int create_raw_socket(char* interface_name) {
 
     // Não joga fora o que identifica como lixo: Modo promíscuo
     status = setsockopt(pac_socket, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr));
-    if(status == 0)
+    if(status < 0)
     {
         fprintf(stderr, "Erro ao setar socket como promiscuo! {create_raw_socket}\n");
         exit(EXIT_FAILURE);
