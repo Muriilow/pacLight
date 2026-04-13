@@ -121,3 +121,43 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
         printf("Mensagem enviada: %zd bytes enviados ns interface %d\n", send_bytes, ifindex);
     }
 }
+void listener_mode(int32_t fd)
+{
+    uint8_t buffer[2048]; //Big buffer to assure segurance 
+    struct sockaddr_ll src_addr;
+    socklen_t addr_len = sizeof(src_addr);
+
+    printf("Aguardando pacotes...\n");
+
+    while (1) {
+        ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, 
+                                       (struct sockaddr*)&src_addr, &addr_len);
+        
+        if (bytes_lidos < 0) {
+            perror("Erro no recvfrom");
+            break;
+        }
+
+        // 1. Verificar se o pacote é o nosso (Start Marker)
+        if (buffer[0] == 126) {
+            printf("\n--- Novo Pacote Recebido (%zd bytes) ---\n", bytes_lidos);
+            
+            // 2. Descompactar campos de bits do Header (Bytes 1 e 2)
+            uint8_t size = buffer[1] & 0x1F;
+            uint8_t sequence = (uint8_t)((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F;
+            uint8_t type = (buffer[2] >> 3) & 0x1F;
+
+            printf("Size: %d | Seq: %d | Type: %d\n", size, sequence, type);
+
+            // 3. Extrair os Dados (começam no byte 3)
+            printf("Dados: ");
+            for(int i = 0; i < size; i++) {
+                printf("%c", buffer[3 + i]);
+            }
+            
+            // 4. Extrair CRC (está logo após os dados)
+            uint8_t crc_recebido = buffer[3 + size];
+            printf("\nCRC: %d\n", crc_recebido);
+        }
+    }
+}
