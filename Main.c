@@ -15,19 +15,35 @@
 #include <net/ethernet.h>   // struct ethhdr (Cabeçalho Ethernet)
 
 #include "Socket.h"
-int main() 
+int main(int argc, char *argv[])
 {
-    uint32_t ifindex = if_nametoindex("lo");
-    int32_t file_desc = create_raw_socket(ifindex);
+    if (argc < 2)
+    {
+        printf("Uso: %s [servidor|player] [interface]\n", argv[0]);
+        return 1; 
+    }
+
+    char *mode = argv[1];
+    char *interface = (argc > 2) ? argv[2] : "lo";
     
-    uint8_t my_data[32];
-    memset(my_data, 0, 32);
-    strcpy((char*)my_data, "Testando rawSocket!!");
-    struct message* msg = create_message(19, 1, my_data);
+    if(strcmp(mode, "player") == 0)
+    {
+        uint32_t ifindex = if_nametoindex(interface);
+        int32_t file_desc = create_raw_socket(ifindex);
+        
+        uint8_t my_data[32];
+        memset(my_data, 0, 32);
+        strcpy((char*)my_data, "Testando rawSocket!!");
+        struct message* msg = create_message(19, 1, my_data);
 
-    size_t *final_size;
-    uint8_t *buffer = serialize_message(msg, final_size);
-    send_message(file_desc, ifindex, buffer, final_size);
+        size_t *final_size;
+        uint8_t *buffer = serialize_message(msg, final_size);
+        send_message(file_desc, ifindex, buffer, final_size);
 
-    free(msg);
+        free(msg);
+    }
+    if(strcmp(mode, "server") == 0)
+    {
+        printf("server!");
+    }
 }
