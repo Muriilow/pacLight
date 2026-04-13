@@ -98,7 +98,7 @@ void send_message(int pac_socket, int ifindex, struct message* message)
     (
         pac_socket,
         message,
-        sizeof(struct message),
+        message->size,
         0,
         (struct sockaddr*)&dest,
         sizeof(struct sockaddr_ll)

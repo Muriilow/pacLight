@@ -17,12 +17,13 @@
 #include "Socket.h"
 int main() 
 {
-     uint32_t ifindex = if_nametoindex("lo");
-     int32_t file_desc = create_raw_socket(ifindex);
-
-     uint32_t my_data[32];
-     memset(my_data, 0, 32);
-     strcpy((char*)my_data, "Testando rawSocket!!");
-
-
+    uint32_t ifindex = if_nametoindex("lo");
+    int32_t file_desc = create_raw_socket(ifindex);
+    
+    uint8_t my_data[32];
+    memset(my_data, 0, 32);
+    strcpy((char*)my_data, "Testando rawSocket!!");
+    struct message* msg = create_message(14, 1, my_data);
+    send_message(file_desc, ifindex, msg);
+    free(msg);
 }
