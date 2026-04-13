@@ -1,4 +1,3 @@
-#include <stdio.h>          // printf
 #include <stdlib.h>         // malloc/exit
 #include <string.h>         // memset/memcpy
 #include <unistd.h>         // close()
@@ -38,7 +37,7 @@ int create_raw_socket(uint32_t ifindex) {
     struct sockaddr_ll address = {0};
     address.sll_family = AF_PACKET;
     address.sll_protocol = htons(ETH_P_ALL);
-    address.sll_ifindex = (uint32_t)ifindex;
+    address.sll_ifindex = (int32_t)ifindex;
 
     // Inicializa socket
     status = bind(pac_socket, (struct sockaddr*) &address, sizeof(address));
@@ -63,7 +62,7 @@ int create_raw_socket(uint32_t ifindex) {
     return pac_socket;
 }
 
-struct message* create_message(uint32_t size, uint32_t type, uint8_t data[32]){
+struct message* create_message(uint32_t size, uint32_t type, void* data){
     struct message* new_message = malloc(sizeof(struct message));
     if(new_message == 0)
     {
@@ -78,17 +77,28 @@ struct message* create_message(uint32_t size, uint32_t type, uint8_t data[32]){
     global_sequence.value++;
 
     new_message->type = (uint8_t)(type & 0x1F);
-    memcpy(new_message->data, data, sizeof(new_message->data));
+    new_message->data = data;
     new_message->CRC = 1;
-
+    
     return new_message;
 }
 
-void send_message(int pac_socket, int ifindex, struct message* message)
+uint8_t *serialize_message(struct message *msg, size_t *final_size)
+{
+    *final_size = (uint64_t)3 + msg->size + 1;
+
+    uint8_t *buffer = malloc(*final_size);
+    memcpy(buffer, msg, 3);
+    memcpy(buffer + 3, msg->data, msg->size);
+    buffer[*final_size - 1] = msg->CRC; 
+    return buffer; 
+}
+
+void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *final_size)
 {
     struct sockaddr_ll dest = {0};
     dest.sll_family = AF_PACKET;
-    dest.sll_ifindex = ifindex;
+    dest.sll_ifindex = (int32_t)ifindex;
     dest.sll_halen = ETH_ALEN;
 
     // No loopback, o endereço MAC costuma ser tudo zero
@@ -98,7 +108,7 @@ void send_message(int pac_socket, int ifindex, struct message* message)
     (
         pac_socket,
         message,
-        message->size,
+        *final_size,
         0,
         (struct sockaddr*)&dest,
         sizeof(struct sockaddr_ll)

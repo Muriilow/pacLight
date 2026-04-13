@@ -23,7 +23,11 @@ int main()
     uint8_t my_data[32];
     memset(my_data, 0, 32);
     strcpy((char*)my_data, "Testando rawSocket!!");
-    struct message* msg = create_message(14, 1, my_data);
-    send_message(file_desc, ifindex, msg);
+    struct message* msg = create_message(19, 1, my_data);
+
+    size_t *final_size;
+    uint8_t *buffer = serialize_message(msg, final_size);
+    send_message(file_desc, ifindex, buffer, final_size);
+
     free(msg);
 }
