@@ -14,7 +14,9 @@
 #include <linux/if_packet.h>// struct sockaddr_ll (Camada 2)
 #include <net/ethernet.h>   // struct ethhdr (Cabeçalho Ethernet)
 
+// Cabeçalhos locais
 #include "Socket.h"
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -29,6 +31,18 @@ int main(int argc, char *argv[])
     uint32_t ifindex = if_nametoindex(interface);
     int32_t file_desc = create_raw_socket(ifindex);
     
+
+    int ack_status = 1;
+    uint8_t ack_data[32];
+    memset(ack_data, 0, 32);
+    strcpy((char*)ack_data, "ACK");
+    struct message *ack_message = create_message(3,1,ack_data);
+
+    size_t *size_ack = malloc(sizeof(size_t));
+    uint8_t *ack = serialize_message(ack_message, size_ack);
+    // ACK não está funcionando, erro no sendto:invalid argument
+
+
     if(strcmp(mode, "player") == 0)
     {
         printf("Iniciando o jogador!\n");
@@ -36,17 +50,31 @@ int main(int argc, char *argv[])
         uint8_t my_data[32];
         memset(my_data, 0, 32);
         strcpy((char*)my_data, "Testando rawSocket!!");
-        struct message* msg = create_message(20, 1, my_data);
+        struct message* msg = create_message(20, 3, my_data);
 
-        size_t *final_size;
+        size_t *final_size = malloc(sizeof(size_t));
         uint8_t *buffer = serialize_message(msg, final_size);
+        
+        while(ack_status != 0){
         send_message(file_desc, ifindex, buffer, final_size);
+        ack_status = wait_ack(file_desc); //está demorando muito na primeira execução do loop e depois faz varias de uma vez e trava novamente
+        }
 
         free(msg);
+        free(final_size);
+        free(buffer);
     }
+
     if(strcmp(mode, "server") == 0)
     {
         printf("Iniciando o servidor!\n");
-        listener_mode(file_desc);
+        while(1){
+            listener_mode(file_desc);
+            send_message(file_desc,ifindex, ack, size_ack); // não está funcionando, erro sendto:invalid argument
+        }
     }
+
+    free(ack);
+    free(ack_message);
+    free(size_ack);
 }

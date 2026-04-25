@@ -13,7 +13,7 @@
 #include <linux/if_packet.h>// struct sockaddr_ll (Camada 2)
 #include <net/ethernet.h>   // struct ethhdr (Cabeçalho Ethernet)
 
-// Cabecalhos locais
+// Cabeçalhos locais
 #include "Socket.h"
 
 struct global_sequence global_sequence = {0};
@@ -115,21 +115,23 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
     );
 
     if(send_bytes == -1) {
-        fprintf(stderr, "Erro ao enviar pacote {send_message}\n");
+        perror("Erro ao enviar pacote");
+        //fprintf(stderr, "Erro ao enviar pacote {send_message}\n");
     }
     else {
         printf("Mensagem enviada: %zd bytes enviados ns interface %d\n", send_bytes, ifindex);
     }
 }
-void listener_mode(int32_t fd)
+int listener_mode(int32_t fd)
 {
+    int waiting = 1;
     uint8_t buffer[2048]; //Big buffer to assure segurance 
     struct sockaddr_ll src_addr;
     socklen_t addr_len = sizeof(src_addr);
 
     printf("Aguardando pacotes...\n");
 
-    while (1) {
+    while (waiting) {
         ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, 
                                        (struct sockaddr*)&src_addr, &addr_len);
         
@@ -158,6 +160,49 @@ void listener_mode(int32_t fd)
             // 4. Extrair CRC (está logo após os dados)
             uint8_t crc_recebido = buffer[3 + size];
             printf("\nCRC: %d\n", crc_recebido);
+
+            if (type == 0){
+                printf("ack recebido");
+                return type;
+            }
+            waiting = 0;
         }
     }
+    return 0;
+}
+int wait_ack(int32_t fd)
+{
+    int waiting = 1;
+    int timeout = 10;
+    uint8_t buffer[2048]; //Big buffer to assure segurance 
+    struct sockaddr_ll src_addr;
+    socklen_t addr_len = sizeof(src_addr);
+
+    printf("Aguardando ACK...\n");
+
+    while ((waiting) && (timeout>0)) { //está demorando muito na primeira execução do loop e depois faz varias de uma vez e trava novamente
+        ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, 
+                                       (struct sockaddr*)&src_addr, &addr_len);
+        
+        if (bytes_lidos < 0) {
+            perror("Erro no recvfrom");
+            break;
+        }
+
+        // 1. Verificar se o pacote é o nosso (Start Marker)
+        if (buffer[0] == 126) {
+
+            uint8_t type = (buffer[2] >> 3) & 0x1F;
+            
+            // Esperar até uma mensagem do tipo ACK
+            if (type == 0){
+                printf("ack recebido");
+                return 0;
+            }
+        }
+        timeout--;
+        printf("%d\n",timeout);
+    }
+    printf("timedout\n");
+    return -1;
 }
