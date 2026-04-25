@@ -59,9 +59,12 @@ int create_raw_socket(uint32_t ifindex) {
     }
 
     // Setando tempo de espera do socket (MANDATÓRIO PELO PROJETO)
-    struct timeval tv;
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
+    const int32_t timeoutMillis = 300;
+    struct timeval tv = { 
+        .tv_sec = timeoutMillis / 1000,
+        .tv_usec = (timeoutMillis % 1000) * 1000
+    };
+
     status = setsockopt(pac_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     if(status < 0)
     {
@@ -102,7 +105,7 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
     }
 }
 
-int listener_mode(int32_t fd)
+int listener_mode(int32_t fd, int8_t *current_seq)
 {
     uint8_t type;
     uint8_t buffer[2048]; 
@@ -131,6 +134,7 @@ int listener_mode(int32_t fd)
             
             uint8_t size = buffer[1] & 0x1F;
             uint8_t sequence = (uint8_t)((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F;
+            *current_seq = sequence; 
 
             printf("Size: %d | Seq: %d | Type: %d\n", size, sequence, type);
              

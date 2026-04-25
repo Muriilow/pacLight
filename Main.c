@@ -62,13 +62,25 @@ int main(int argc, char *argv[])
 
     if(strcmp(mode, "server") == 0)
     {
+        int8_t current_seq = 67;
+        int8_t last_seq = 0;
         printf("Iniciando o servidor!\n");
+
         while(1)
         {
-            int type = listener_mode(file_desc);
-            if(type != -1) {
+            int type = listener_mode(file_desc, &current_seq);
+            if(type !=  -1) {
+
+                if(current_seq == last_seq)
+                {
+                    printf("Mensagem duplicada! Ignorando e enviando ACK...\n");
+                    send_ack(file_desc, ifindex); 
+                    continue;
+                }
+
                 printf("Dados recebidos! Enviando ACK...\n");
                 send_ack(file_desc, ifindex); 
+                last_seq = current_seq;
             }
         }
     }
