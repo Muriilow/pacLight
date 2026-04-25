@@ -8,7 +8,8 @@
 #include <sys/ioctl.h>      // ioctl() para configurar a placa de rede
 #include <net/if.h>         // struct ifreq (para achar a eth0)
 #include <stdint.h>         // uint
-                            //
+#include <sys/time.h>       // struct timeval
+
 // Cabeçalhos de Protocolo
 #include <linux/if_packet.h>// struct sockaddr_ll (Camada 2)
 #include <net/ethernet.h>   // struct ethhdr (Cabeçalho Ethernet)
@@ -58,6 +59,18 @@ int create_raw_socket(uint32_t ifindex) {
         fprintf(stderr, "Erro ao setar socket como promiscuo! {create_raw_socket}\n");
         exit(EXIT_FAILURE);
     }
+
+    // Setando tempo de espera do socket 
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    status = setsockopt(pac_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    if(status < 0)
+    {
+        fprintf(stderr, "Erro ao setar tempo de espera do socket! {create_raw_socket}\n");
+        exit(EXIT_FAILURE);
+    }
+    
 
     return pac_socket;
 }
@@ -171,21 +184,18 @@ int listener_mode(int32_t fd)
 //executa o loop várias vezes, depois trava de novo e fica repetindo
 int wait_ack(int32_t fd)
 {
-    int waiting = 1;
-    int timeout = 10;
     uint8_t buffer[2048]; //Big buffer to assure segurance 
     struct sockaddr_ll src_addr;
     socklen_t addr_len = sizeof(src_addr);
 
     printf("Aguardando ACK...\n");
-
-    while ((waiting) && (timeout>0)) {
+    
         ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, 
                                        (struct sockaddr*)&src_addr, &addr_len);
         
         if (bytes_lidos < 0) {
-            perror("Erro no recvfrom");
-            break;
+            perror("Não recebeu mensagem de volta. {wait_ack}");
+            return -1;
         }
 
         // 1. Verificar se o pacote é o nosso (Start Marker)
@@ -199,9 +209,6 @@ int wait_ack(int32_t fd)
                 return 0;
             }
         }
-        timeout--;
-        printf("%d\n",timeout);
-    }
-    printf("timedout\n");
+
     return -1;
 }
