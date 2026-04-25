@@ -36,8 +36,9 @@ int main(int argc, char *argv[])
         uint8_t my_data[32];
         memset(my_data, 0, 32);
         strcpy((char*)my_data, "Testando rawSocket!!");
-        struct message* msg = create_message(20, TYPE_DATA, my_data);
-
+        
+        // Player envia usando a global_sequence.value
+        struct message* msg = create_message(20, TYPE_DATA, global_sequence.value, my_data);
         size_t final_size;
         uint8_t *buffer = serialize_message(msg, &final_size);
         
@@ -46,15 +47,10 @@ int main(int argc, char *argv[])
         {
             send_message(file_desc, ifindex, buffer, &final_size);
             response = wait_response(file_desc);
-            
-            if (response == TYPE_NACK) {
-                printf("Servidor reportou erro (NACK). Reenviando...\n");
-            } else if (response == -1) {
-                printf("Timeout. Reenviando...\n");
-            }
         }
 
-        printf("Mensagem entregue com sucesso!\n");
+        printf("Mensagem entregue com sucesso! Avançando sequência...\n");
+        next_sequence(); 
 
         free(msg);
         free(buffer);
@@ -62,25 +58,24 @@ int main(int argc, char *argv[])
 
     if(strcmp(mode, "server") == 0)
     {
-        int8_t current_seq = 67;
-        int8_t last_seq = 0;
+        uint8_t last_processed_seq = 255;
+        uint8_t current_received_seq = 0;
         printf("Iniciando o servidor!\n");
 
         while(1)
         {
-            int type = listener_mode(file_desc, &current_seq);
-            if(type !=  -1) {
-
-                if(current_seq == last_seq)
+            int type = listener_mode(file_desc, &current_received_seq);
+            if(type != -1) {
+                if(current_received_seq == last_processed_seq)
                 {
-                    printf("Mensagem duplicada! Ignorando e enviando ACK...\n");
-                    send_ack(file_desc, ifindex); 
+                    printf("Mensagem duplicada (Seq %d)! Reenviando ACK...\n", current_received_seq);
+                    send_ack(file_desc, ifindex, current_received_seq); 
                     continue;
                 }
 
-                printf("Dados recebidos! Enviando ACK...\n");
-                send_ack(file_desc, ifindex); 
-                last_seq = current_seq;
+                printf("Nova mensagem (Seq %d)! Processando e enviando ACK...\n", current_received_seq);
+                send_ack(file_desc, ifindex, current_received_seq); 
+                last_processed_seq = current_received_seq;
             }
         }
     }

@@ -23,9 +23,10 @@ struct __attribute__((packed)) message {
 
 extern struct global_sequence global_sequence;
 
-struct message* create_message(uint32_t size, uint32_t type, void *data);
+struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void *data);
 uint8_t *serialize_message(struct message *msg, size_t *final_size);
-void send_ack(int fd, uint32_t ifindex);
-void send_nack(int fd, uint32_t ifindex);
+void next_sequence();
+void send_ack(int fd, uint32_t ifindex, uint8_t seq);
+void send_nack(int fd, uint32_t ifindex, uint8_t seq);
 
 #endif

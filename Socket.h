@@ -7,7 +7,7 @@
 
 int create_raw_socket(uint32_t ifindex);
 void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *final_size);
-int listener_mode(int32_t fd, int8_t *current_seq);
+int listener_mode(int32_t fd, uint8_t *received_seq);
 int wait_response(int32_t fd);
 
 #endif
