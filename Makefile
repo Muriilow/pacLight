@@ -1,4 +1,4 @@
-SRC_FILES = Main.o Socket.o
+SRC_FILES = Main.o Socket.o Message.o
 FLAGS = -Wno-packed-bitfield-compat -g3 -Wall -Wextra -Wconversion -fsanitize=address,undefined
 main: $(SRC_FILES)
 	gcc $(FLAGS) $(SRC_FILES) -o pacLight 
@@ -8,6 +8,9 @@ Main.o: Main.c
 
 Socket.o: Socket.c
 	gcc $(FLAGS) -c Socket.c 
+
+Message.o: Message.c
+	gcc $(FLAGS) -c Message.c
 
 clean: 
 	rm -f *.o pacLight 

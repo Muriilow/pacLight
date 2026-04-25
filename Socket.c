@@ -17,8 +17,6 @@
 // Cabeçalhos locais
 #include "Socket.h"
 
-struct global_sequence global_sequence = {0};
-
 //esse int na verdade é um file descriptor
 int create_raw_socket(uint32_t ifindex) {
     int32_t status;
@@ -60,7 +58,7 @@ int create_raw_socket(uint32_t ifindex) {
         exit(EXIT_FAILURE);
     }
 
-    // Setando tempo de espera do socket 
+    // Setando tempo de espera do socket (MANDATÓRIO PELO PROJETO)
     struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 0;
@@ -75,43 +73,12 @@ int create_raw_socket(uint32_t ifindex) {
     return pac_socket;
 }
 
-struct message* create_message(uint32_t size, uint32_t type, void* data){
-    struct message* new_message = malloc(sizeof(struct message));
-    if(new_message == 0)
-    {
-        fprintf(stderr, "Erro ao criar mensagem! {create_message}\n");
-        exit(EXIT_FAILURE);
-    }
-
-    new_message->start_marker = 126;
-    new_message->size = (uint8_t)(size & 0x1F);
-    
-    new_message->sequence = (uint8_t)(global_sequence.value & 0x3F);
-    global_sequence.value++;
-
-    new_message->type = (uint8_t)(type & 0x1F);
-    new_message->data = data;
-    new_message->CRC = 1;
-    
-    return new_message;
-}
-
-uint8_t *serialize_message(struct message *msg, size_t *final_size)
-{
-    *final_size = (uint64_t)3 + msg->size + 1;
-
-    uint8_t *buffer = malloc(*final_size);
-    memcpy(buffer, msg, 3);
-    memcpy(buffer + 3, msg->data, msg->size);
-    buffer[*final_size - 1] = msg->CRC; 
-    return buffer; 
-}
-
 void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *final_size)
 {
     struct sockaddr_ll dest = {0};
     dest.sll_family = AF_PACKET;
     dest.sll_ifindex = (int32_t)ifindex;
+    dest.sll_protocol = htons(ETH_P_ALL);
     dest.sll_halen = ETH_ALEN;
 
     // No loopback, o endereço MAC costuma ser tudo zero
@@ -129,16 +96,16 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
 
     if(send_bytes == -1) {
         perror("Erro ao enviar pacote");
-        //fprintf(stderr, "Erro ao enviar pacote {send_message}\n");
     }
     else {
-        printf("Mensagem enviada: %zd bytes enviados ns interface %d\n", send_bytes, ifindex);
+        printf("Mensagem enviada: %zd bytes na interface %d\n", send_bytes, ifindex);
     }
 }
+
 int listener_mode(int32_t fd)
 {
     uint8_t type;
-    uint8_t buffer[2048]; //Big buffer to assure segurance 
+    uint8_t buffer[2048]; 
     struct sockaddr_ll src_addr;
     socklen_t addr_len = sizeof(src_addr);
 
@@ -148,73 +115,59 @@ int listener_mode(int32_t fd)
         ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, 
                                        (struct sockaddr*)&src_addr, &addr_len);
         
-        if (bytes_lidos < 0)
-            return -1;
+        if (bytes_lidos < 0) {
+            // Timeout do SO_RCVTIMEO
+            return -1; 
+        }
 
-        // 1. Verificar se o pacote é o nosso (Start Marker)
+        // Verificar marcador de início
         if (buffer[0] == 126) {
             type = (buffer[2] >> 3) & 0x1F;
-            
-            // Ignorar acks no modo listener para não processar o proprio eco  (loopback)
-            if(type == 0)
-                continue;
 
-            printf("\n--- Novo Pacote Recebido (%zd bytes) ---\n", bytes_lidos);
+            // Ignoramos ACKs (tipo 0) no modo listener pois esperamos DADOS.
+            if (type == TYPE_ACK || type == TYPE_NACK) continue;
+
+            printf("\n--- Novo Pacote de Dados Recebido (%zd bytes) ---\n", bytes_lidos);
             
-            // 2. Descompactar campos de bits do Header (Bytes 1 e 2)
             uint8_t size = buffer[1] & 0x1F;
             uint8_t sequence = (uint8_t)((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F;
 
             printf("Size: %d | Seq: %d | Type: %d\n", size, sequence, type);
-
-            // 3. Extrair os Dados (começam no byte 3)
-            printf("Dados: ");
-            for(int i = 0; i < size; i++) {
-                printf("%c", buffer[3 + i]);
-            }
-            
-            // 4. Extrair CRC (está logo após os dados)
-            uint8_t crc_recebido = buffer[3 + size];
-            printf("\nCRC: %d\n", crc_recebido);
              
-            return type;
+            return type; 
         }
     }
-    return type;
 }
 
 int wait_response(int32_t fd)
 {
-    uint8_t buffer[2048]; //Big buffer to assure segurance 
+    uint8_t buffer[2048]; 
     struct sockaddr_ll src_addr;
     socklen_t addr_len = sizeof(src_addr);
 
-    printf("Aguardando ACK...\n");
+    printf("Aguardando Resposta (ACK/NACK)...\n");
     
+    while(1) {
         ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, 
                                        (struct sockaddr*)&src_addr, &addr_len);
         
         if (bytes_lidos < 0) {
-            perror("Não recebeu mensagem de volta. {wait_ack}");
+            printf("Timeout: Nenhuma resposta recebida.\n");
             return -1;
         }
 
-        // 1. Verificar se o pacote é o nosso (Start Marker)
         if (buffer[0] == 126) {
-
             uint8_t type = (buffer[2] >> 3) & 0x1F;
             
-            // Esperar até uma mensagem do tipo ACK
-            if (type == ACK){
-                printf("ack recebido\n");
-                return ACK;
+            if (type == TYPE_ACK){
+                printf("ACK recebido!\n");
+                return TYPE_ACK;
             }
-            if (type == NACK)
-            {
-                printf("nack recebido\n");
-                return NACK;
+            if (type == TYPE_NACK){
+                printf("NACK recebido!\n");
+                return TYPE_NACK;
             }
+            // Ignora outros pacotes (ecos de dados)
         }
-
-    return -1;
+    }
 }
