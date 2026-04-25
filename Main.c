@@ -36,12 +36,10 @@ int main(int argc, char *argv[])
     uint8_t ack_data[32];
     memset(ack_data, 0, 32);
     strcpy((char*)ack_data, "ACK");
-    struct message *ack_message = create_message(3,1,ack_data);
+    struct message *ack_message = create_message(10,0,ack_data);//tamanho minimo é 10
 
     size_t *size_ack = malloc(sizeof(size_t));
     uint8_t *ack = serialize_message(ack_message, size_ack);
-    // ACK não está funcionando, erro no sendto:invalid argument
-
 
     if(strcmp(mode, "player") == 0)
     {
@@ -69,8 +67,8 @@ int main(int argc, char *argv[])
     {
         printf("Iniciando o servidor!\n");
         while(1){
-            listener_mode(file_desc);
-            send_message(file_desc,ifindex, ack, size_ack); // não está funcionando, erro sendto:invalid argument
+            if(listener_mode(file_desc) != 0 )
+                send_message(file_desc,ifindex, ack, size_ack); // não está funcionando, erro sendto:invalid argument
         }
     }
 

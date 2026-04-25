@@ -125,6 +125,7 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
 int listener_mode(int32_t fd)
 {
     int waiting = 1;
+    uint8_t type;
     uint8_t buffer[2048]; //Big buffer to assure segurance 
     struct sockaddr_ll src_addr;
     socklen_t addr_len = sizeof(src_addr);
@@ -147,7 +148,7 @@ int listener_mode(int32_t fd)
             // 2. Descompactar campos de bits do Header (Bytes 1 e 2)
             uint8_t size = buffer[1] & 0x1F;
             uint8_t sequence = (uint8_t)((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F;
-            uint8_t type = (buffer[2] >> 3) & 0x1F;
+            type = (buffer[2] >> 3) & 0x1F; // movi a declaração do type pra cima para usar como valor de retorno
 
             printf("Size: %d | Seq: %d | Type: %d\n", size, sequence, type);
 
@@ -160,16 +161,14 @@ int listener_mode(int32_t fd)
             // 4. Extrair CRC (está logo após os dados)
             uint8_t crc_recebido = buffer[3 + size];
             printf("\nCRC: %d\n", crc_recebido);
-
-            if (type == 0){
-                printf("ack recebido");
-                return type;
-            }
+             
             waiting = 0;
         }
     }
-    return 0;
+    return type;
 }
+//o timeout não está funcionando, trava por bastante tempo no primeiro loop, 
+//executa o loop várias vezes, depois trava de novo e fica repetindo
 int wait_ack(int32_t fd)
 {
     int waiting = 1;
@@ -180,7 +179,7 @@ int wait_ack(int32_t fd)
 
     printf("Aguardando ACK...\n");
 
-    while ((waiting) && (timeout>0)) { //está demorando muito na primeira execução do loop e depois faz varias de uma vez e trava novamente
+    while ((waiting) && (timeout>0)) {
         ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, 
                                        (struct sockaddr*)&src_addr, &addr_len);
         
@@ -196,7 +195,7 @@ int wait_ack(int32_t fd)
             
             // Esperar até uma mensagem do tipo ACK
             if (type == 0){
-                printf("ack recebido");
+                printf("ack recebido\n");
                 return 0;
             }
         }
