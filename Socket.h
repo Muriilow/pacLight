@@ -4,6 +4,8 @@
 #include <stdio.h>          // printf
 #include <stdint.h>
 
+#define ACK 0 
+#define NACK 1
 struct __attribute__((packed)) global_sequence{
     uint8_t value : 6 ; 
 };
@@ -23,6 +25,6 @@ struct message* create_message(uint32_t size, uint32_t type, void *data);
 uint8_t *serialize_message(struct message *msg, size_t *final_size);
 void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *final_size);
 int listener_mode(int32_t fd);
-int wait_ack(int32_t fd);
+int wait_response(int32_t fd);
 
 #endif

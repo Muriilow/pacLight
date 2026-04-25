@@ -137,7 +137,6 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
 }
 int listener_mode(int32_t fd)
 {
-    int waiting = 1;
     uint8_t type;
     uint8_t buffer[2048]; //Big buffer to assure segurance 
     struct sockaddr_ll src_addr;
@@ -145,23 +144,26 @@ int listener_mode(int32_t fd)
 
     printf("Aguardando pacotes...\n");
 
-    while (waiting) {
+    while (1) {
         ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, 
                                        (struct sockaddr*)&src_addr, &addr_len);
         
-        if (bytes_lidos < 0) {
-            perror("Erro no recvfrom");
-            break;
-        }
+        if (bytes_lidos < 0)
+            return -1;
 
         // 1. Verificar se o pacote é o nosso (Start Marker)
         if (buffer[0] == 126) {
+            type = (buffer[2] >> 3) & 0x1F;
+            
+            // Ignorar acks no modo listener para não processar o proprio eco  (loopback)
+            if(type == 0)
+                continue;
+
             printf("\n--- Novo Pacote Recebido (%zd bytes) ---\n", bytes_lidos);
             
             // 2. Descompactar campos de bits do Header (Bytes 1 e 2)
             uint8_t size = buffer[1] & 0x1F;
             uint8_t sequence = (uint8_t)((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F;
-            type = (buffer[2] >> 3) & 0x1F; // movi a declaração do type pra cima para usar como valor de retorno
 
             printf("Size: %d | Seq: %d | Type: %d\n", size, sequence, type);
 
@@ -175,14 +177,13 @@ int listener_mode(int32_t fd)
             uint8_t crc_recebido = buffer[3 + size];
             printf("\nCRC: %d\n", crc_recebido);
              
-            waiting = 0;
+            return type;
         }
     }
     return type;
 }
-//o timeout não está funcionando, trava por bastante tempo no primeiro loop, 
-//executa o loop várias vezes, depois trava de novo e fica repetindo
-int wait_ack(int32_t fd)
+
+int wait_response(int32_t fd)
 {
     uint8_t buffer[2048]; //Big buffer to assure segurance 
     struct sockaddr_ll src_addr;
@@ -204,9 +205,14 @@ int wait_ack(int32_t fd)
             uint8_t type = (buffer[2] >> 3) & 0x1F;
             
             // Esperar até uma mensagem do tipo ACK
-            if (type == 0){
+            if (type == ACK){
                 printf("ack recebido\n");
-                return 0;
+                return ACK;
+            }
+            if (type == NACK)
+            {
+                printf("nack recebido\n");
+                return NACK;
             }
         }
 

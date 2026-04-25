@@ -3,25 +3,22 @@
 #include <string.h>         // memset/memcpy
 #include <unistd.h>         // close()
 
-// O "Coração" dos Sockets
 #include <sys/socket.h>     // socket(), bind(), sendto()
 #include <arpa/inet.h>      // htons() e manipulação de endereços
 #include <sys/ioctl.h>      // ioctl() para configurar a placa de rede
 #include <net/if.h>         // struct ifreq (para achar a eth0)
 #include <stdint.h>         // uint
 
-// Cabeçalhos de Protocolo
 #include <linux/if_packet.h>// struct sockaddr_ll (Camada 2)
 #include <net/ethernet.h>   // struct ethhdr (Cabeçalho Ethernet)
 
-// Cabeçalhos locais
 #include "Socket.h"
 
 int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
-        printf("Uso: %s [servidor|player] [interface]\n", argv[0]);
+        printf("Uso: %s [server|player] [interface]\n", argv[0]);
         return 1; 
     }
 
@@ -53,10 +50,13 @@ int main(int argc, char *argv[])
         size_t *final_size = malloc(sizeof(size_t));
         uint8_t *buffer = serialize_message(msg, final_size);
         
-        while(ack_status != 0){
-        send_message(file_desc, ifindex, buffer, final_size);
-        ack_status = wait_ack(file_desc); //está demorando muito na primeira execução do loop e depois faz varias de uma vez e trava novamente
+        int32_t response;
+        do
+        {
+            send_message(file_desc, ifindex, buffer, final_size);
+            response = wait_response(file_desc);
         }
+        while(response != 0);
 
         free(msg);
         free(final_size);
@@ -65,10 +65,14 @@ int main(int argc, char *argv[])
 
     if(strcmp(mode, "server") == 0)
     {
+        int32_t type;
         printf("Iniciando o servidor!\n");
-        while(1){
-            if(listener_mode(file_desc) != 0 )
-                send_message(file_desc,ifindex, ack, size_ack); // não está funcionando, erro sendto:invalid argument
+        while(1)
+        {
+            type = listener_mode(file_desc);
+
+            if(type == ACK)
+                send_message(file_desc,ifindex, ack, size_ack); 
         }
     }
 
