@@ -1,16 +1,19 @@
-SRC_FILES = Main.o Socket.o Message.o
-FLAGS = -Wno-packed-bitfield-compat -g3 -Wall -Wextra -Wconversion -fsanitize=address,undefined
-main: $(SRC_FILES)
-	gcc $(FLAGS) $(SRC_FILES) -o pacLight 
+CC = gcc
+CFLAGS = -Wno-packed-bitfield-compat -g3 -Wall -Wextra -Wconversion -fsanitize=address,undefined -IScripts
+SRC_DIR = Scripts
+OBJ_FILES = Main.o Socket.o Message.o
 
-Main.o: Main.c
-	gcc $(FLAGS) -c Main.c 
+pacLight: $(OBJ_FILES)
+	$(CC) $(CFLAGS) $(OBJ_FILES) -o pacLight
 
-Socket.o: Socket.c
-	gcc $(FLAGS) -c Socket.c 
+Main.o: $(SRC_DIR)/Main.c $(SRC_DIR)/Socket.h $(SRC_DIR)/Message.h
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/Main.c
 
-Message.o: Message.c
-	gcc $(FLAGS) -c Message.c
+Socket.o: $(SRC_DIR)/Socket.c $(SRC_DIR)/Socket.h $(SRC_DIR)/Message.h
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/Socket.c
 
-clean: 
-	rm -f *.o pacLight 
+Message.o: $(SRC_DIR)/Message.c $(SRC_DIR)/Message.h
+	$(CC) $(CFLAGS) -c $(SRC_DIR)/Message.c
+
+clean:
+	rm -f *.o pacLight
