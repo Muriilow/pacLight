@@ -85,12 +85,10 @@ int listener_mode(int32_t fd, struct message *received_msg) {
     struct sockaddr_ll src_addr;
     socklen_t addr_len = sizeof(src_addr);
 
-    printf("Aguardando pacotes...\n");
-
     while (1) {
         ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&src_addr, &addr_len);
         
-        if (bytes_lidos < 0) 
+        if (bytes_lidos < 0)
             return -1; 
 
         if (buffer[0] == 126) {
@@ -98,16 +96,13 @@ int listener_mode(int32_t fd, struct message *received_msg) {
             uint8_t seq = (uint8_t)(((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F);
             uint8_t type = (buffer[2] >> 3) & 0x1F;
 
-            // Ignora ACKs/NACKs e o próprio mapa enviado (evita eco em loopback)
-            if (type == TYPE_ACK || type == TYPE_NACK)
-                continue;
-
             // Verifica CRC (do marcador até o byte antes do CRC)
             if (crc8_bitwise(buffer, (size_t)(3 + size)) != buffer[3 + size]) {
-                printf("Erro na verificacao de integridade (CRC incorreto)!\n");
+                printf("Erro: CRC inválido.\n");
                 continue;
             }
 
+            // Popula a estrutura de retorno
             if (received_msg != NULL) {
                 received_msg->start_marker = 126;
                 received_msg->size = (uint8_t)(size & 0x1F);
@@ -120,29 +115,10 @@ int listener_mode(int32_t fd, struct message *received_msg) {
                     received_msg->data = NULL;
                 }
             }
-            // ... resto do log ...
-
-            printf("\n--- Novo Pacote Recebido (%zd bytes) ---\n", bytes_lidos);
-            printf("Size: %d | Seq: %d | Type: %d\n", size, seq, type);
              
             return (int)type; 
         }
     }
 }
 
-int wait_response(int32_t fd) {
-    uint8_t buffer[2048]; 
-    while(1) {
-        ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, NULL, NULL);
-        if (bytes_lidos < 0) {
-            printf("Timeout: Nenhuma resposta recebida.\n");
-            return -1;
-        }
-
-        if (buffer[0] == 126) {
-            uint8_t type = (buffer[2] >> 3) & 0x1F;
-            if (type == TYPE_ACK) return TYPE_ACK;
-            if (type == TYPE_NACK) return TYPE_NACK;
-        }
-    }
-}
+// wait_response foi removida pois o listener_mode agora lida com tudo.

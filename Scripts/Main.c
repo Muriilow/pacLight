@@ -76,38 +76,40 @@ int main(int argc, char *argv[])
             return 1;
         }
         
-        printf("Iniciando o servidor! Enviando mapa inicial...\n");
-        // O servidor toma a iniciativa e envia o mapa
-        int response = -1;
-        while(response != TYPE_ACK)
-        {
-            send_map(file_desc, ifindex, global_sequence.value, &game);
-            response = wait_response(file_desc);
-        }
-        next_sequence();
+        printf("Iniciando o servidor!\n");
 
         while(1)
         {
+            // O servidor envia o mapa inicial ou atualizado
+            send_map(file_desc, ifindex, global_sequence.value, &game);
+
+            // Espera ACK do mapa OU um novo comando do jogador
             int type = listener_mode(file_desc, &received_msg);
-            if(type != -1) {
-                if(received_msg.sequence == last_processed_seq)
-                {
-                    printf("Mensagem duplicada (Seq %d)! Reenviando ACK...\n", received_msg.sequence);
-                    send_ack(file_desc, ifindex, received_msg.sequence); 
-                    if (received_msg.data) free(received_msg.data);
-                    continue;
-                }
-
-                printf("Comando recebido (Tipo %d)! Processando...\n", received_msg.type);
-                send_ack(file_desc, ifindex, received_msg.sequence); 
-                last_processed_seq = received_msg.sequence;
-
-                // Após processar o movimento (futura implementação), envia o mapa atualizado
-                send_map(file_desc, ifindex, global_sequence.value, &game);
-                next_sequence();
-
-                if (received_msg.data) free(received_msg.data);
+            
+            if (type == -1) {
+                // Timeout no mapa: o loop volta e reenvia o mapa automaticamente
+                continue;
             }
+
+            if (type == TYPE_ACK) {
+                // Mapa foi entregue! Agora esperamos o próximo comando do player.
+                // Avançamos a sequência para o próximo pacote que formos enviar.
+                next_sequence();
+                continue;
+            }
+
+            // Se recebemos algo que não é ACK, tratamos como novo comando (se for seq nova)
+            if (type >= 10 && type <= 13) { // Movimentos
+                if(received_msg.sequence == last_processed_seq) {
+                    send_ack(file_desc, ifindex, received_msg.sequence); 
+                } else {
+                    send_ack(file_desc, ifindex, received_msg.sequence); 
+                    last_processed_seq = received_msg.sequence;
+                    // TODO: aplicar_movimento(type, &game);
+                }
+            }
+
+            if (received_msg.data) free(received_msg.data);
         }
     }
 
