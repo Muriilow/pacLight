@@ -80,7 +80,7 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
     }
 }
 
-int listener_mode(int32_t fd, uint8_t *received_seq) {
+int listener_mode(int32_t fd, struct message *received_msg) {
     uint8_t buffer[2048]; 
     struct sockaddr_ll src_addr;
     socklen_t addr_len = sizeof(src_addr);
@@ -94,19 +94,36 @@ int listener_mode(int32_t fd, uint8_t *received_seq) {
             return -1; 
 
         if (buffer[0] == 126) {
+            uint8_t size = buffer[1] & 0x1F;
+            uint8_t seq = (uint8_t)(((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F);
             uint8_t type = (buffer[2] >> 3) & 0x1F;
+
+            // Ignora ACKs/NACKs e o próprio mapa enviado (evita eco em loopback)
             if (type == TYPE_ACK || type == TYPE_NACK)
                 continue;
 
-            uint8_t size = buffer[1] & 0x1F;
-            if(crc8_bitwise(buffer, (size_t)bytes_lidos) != 0)
-                printf("Erro na verificacao de integridade da mensagem {listener_mode} \n");
+            // Verifica CRC (do marcador até o byte antes do CRC)
+            if (crc8_bitwise(buffer, (size_t)(3 + size)) != buffer[3 + size]) {
+                printf("Erro na verificacao de integridade (CRC incorreto)!\n");
+                continue;
+            }
 
-            if (received_seq != NULL)
-                *received_seq = (uint8_t)(((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F);
+            if (received_msg != NULL) {
+                received_msg->start_marker = 126;
+                received_msg->size = (uint8_t)(size & 0x1F);
+                received_msg->sequence = (uint8_t)(seq & 0x3F);
+                received_msg->type = (uint8_t)(type & 0x1F);
+                if (size > 0) {
+                    received_msg->data = malloc(size);
+                    memcpy(received_msg->data, &buffer[3], size);
+                } else {
+                    received_msg->data = NULL;
+                }
+            }
+            // ... resto do log ...
 
-            printf("\n--- Novo Pacote de Dados Recebido (%zd bytes) ---\n", bytes_lidos);
-            printf("Size: %d | Seq: %d | Type: %d\n", size, (received_seq ? *received_seq : 0), type);
+            printf("\n--- Novo Pacote Recebido (%zd bytes) ---\n", bytes_lidos);
+            printf("Size: %d | Seq: %d | Type: %d\n", size, seq, type);
              
             return (int)type; 
         }

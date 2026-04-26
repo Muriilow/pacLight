@@ -46,6 +46,7 @@ uint8_t *serialize_message(struct message *msg, size_t *final_size) {
     return buffer;
 }
 
+
 void send_ack(int fd, uint32_t ifindex, uint8_t seq) {
     struct message *msg = create_message(0, TYPE_ACK, seq, NULL);
     size_t final_size;
@@ -68,6 +69,48 @@ void send_nack(int fd, uint32_t ifindex, uint8_t seq) {
     free(msg);
 }
 
+void send_map(int fd, uint32_t ifindex, uint8_t seq, GameState *game)
+{
+    int side = game->visibility_radius;
+    int num_cells = 1 + 2 * side * (side + 1); 
+    
+    char *visible_grid = malloc((size_t)num_cells);
+    if (!visible_grid) return;
+
+    int x_axis = game->pacman_x;
+    int y_axis = game->pacman_y;
+    int k = 0;
+
+    for (int i = -side; i <= side; i++) {
+        for (int j = -side; j <= side; j++) {
+            if (abs(i) + abs(j) <= side) {
+                // i é o deslocamento em Y (linhas), j em X (colunas)
+                int current_y = y_axis + i;
+                int current_x = x_axis + j;
+
+                if (current_x >= 0 && current_x < MAP_SIZE && current_y >= 0 && current_y < MAP_SIZE)
+                    visible_grid[k++] = game->grid[current_y][current_x];
+                else 
+                    visible_grid[k++] = 'X'; 
+            }
+        }
+    }
+
+    uint32_t total_size = (uint32_t)k;
+    if (total_size > 31) total_size = 31; // Fragmentação será implementada depois
+
+    struct message *msg = create_message(total_size, TYPE_VISUAL, seq, visible_grid);
+    size_t final_size;
+    uint8_t *buffer = serialize_message(msg, &final_size);
+    
+    if (buffer) {
+        send_message(fd, ifindex, buffer, &final_size);
+        free(buffer);
+    }
+    
+    free(msg);
+    free(visible_grid);
+}
 uint8_t crc8_bitwise(const uint8_t *data, size_t size) {
     uint8_t crc = 0x00;
     uint8_t polyn = 0x07;
