@@ -90,18 +90,22 @@ int listener_mode(int32_t fd, uint8_t *received_seq) {
     while (1) {
         ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&src_addr, &addr_len);
         
-        if (bytes_lidos < 0) return -1; 
+        if (bytes_lidos < 0) 
+            return -1; 
 
         if (buffer[0] == 126) {
             uint8_t type = (buffer[2] >> 3) & 0x1F;
-            if (type == TYPE_ACK || type == TYPE_NACK) continue;
+            if (type == TYPE_ACK || type == TYPE_NACK)
+                continue;
 
-            if (received_seq != NULL) {
+            uint8_t size = buffer[1] & 0x1F;
+            if(crc8_bitwise(buffer, (size_t)bytes_lidos) != 0)
+                printf("Erro na verificacao de integridade da mensagem {listener_mode} \n");
+
+            if (received_seq != NULL)
                 *received_seq = (uint8_t)(((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F);
-            }
 
             printf("\n--- Novo Pacote de Dados Recebido (%zd bytes) ---\n", bytes_lidos);
-            uint8_t size = buffer[1] & 0x1F;
             printf("Size: %d | Seq: %d | Type: %d\n", size, (received_seq ? *received_seq : 0), type);
              
             return (int)type; 

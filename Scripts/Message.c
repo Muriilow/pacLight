@@ -38,6 +38,9 @@ uint8_t *serialize_message(struct message *msg, size_t *final_size) {
     if (msg->size > 0 && msg->data != NULL) {
         memcpy(buffer + 3, msg->data, msg->size);
     }
+
+    //Applying CRC when serializing the message
+    msg->CRC = crc8_bitwise((const uint8_t *)buffer, actual_payload_size - 1);
     buffer[actual_payload_size - 1] = msg->CRC;
 
     return buffer;
@@ -63,4 +66,20 @@ void send_nack(int fd, uint32_t ifindex, uint8_t seq) {
         free(buffer);
     }
     free(msg);
+}
+
+uint8_t crc8_bitwise(const uint8_t *data, size_t size) {
+    uint8_t crc = 0x00;
+    uint8_t polyn = 0x07;
+
+    for (size_t i = 0; i < size; i++) {
+        crc ^= data[i];
+        for (uint8_t bit = 0; bit < 8; bit++) {
+            if (crc & 0x80)
+                crc = (uint8_t)((crc << 1) ^ polyn);
+            else
+                crc = (uint8_t)(crc << 1);
+        }
+    }
+    return crc;
 }

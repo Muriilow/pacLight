@@ -39,5 +39,6 @@ uint8_t *serialize_message(struct message *msg, size_t *final_size);
 void next_sequence();
 void send_ack(int fd, uint32_t ifindex, uint8_t seq);
 void send_nack(int fd, uint32_t ifindex, uint8_t seq);
+uint8_t crc8_bitwise(const uint8_t *data, size_t size);
 
 #endif
