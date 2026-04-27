@@ -111,6 +111,29 @@ void send_map(int fd, uint32_t ifindex, uint8_t seq, GameState *game)
     free(msg);
     free(visible_grid);
 }
+
+int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq) {
+    if (listen_return == LISTEN_TIMEOUT) {
+        return listen_return;
+    }
+
+    if (listen_return == LISTEN_CRC_ERROR) {
+        send_nack(fd, ifindex, expected_seq);
+        return listen_return;
+    }
+
+    // Se chegou aqui, listen_return é o TYPE da mensagem recebida e o CRC está ok
+    if (received_msg->sequence != expected_seq) {
+        send_nack(fd, ifindex, expected_seq);
+        return LISTEN_SEQ_ERROR;
+    }
+
+    if(listen_return != TYPE_ACK && listen_return != TYPE_NACK)
+        send_ack(fd, ifindex, received_msg->sequence);
+
+    return listen_return;
+}
+
 uint8_t crc8_bitwise(const uint8_t *data, size_t size) {
     uint8_t crc = 0x00;
     uint8_t polyn = 0x07;

@@ -33,33 +33,33 @@ int main(int argc, char *argv[])
     if(strcmp(mode, "player") == 0)
     {
         printf("Iniciando o jogador! Aguardando mapa inicial...\n");
-        struct message initial_map_msg;
+        struct message msg;
+        msg.data = NULL;
         
-        // O jogador começa esperando o mapa do servidor
-        int type = -1;
         while(1)
         {
-            type = listener_mode(file_desc, &initial_map_msg);
-            if(type != -1)
-            {
-                printf("recebido msg \n");
-                break;
+            int raw_type = listener_mode(file_desc, &msg);
+            int result = handle_listen_result(file_desc, ifindex, raw_type, &msg, msg.sequence);
+            
+            if(result < 0) {
+                if (msg.data) {
+                    free(msg.data); 
+                    msg.data = NULL;
+                }
+                continue;
             }
-        }
-        printf("%d\n", type);
-        if (type == TYPE_VISUAL) {
-            printf("Mapa recebido! Iniciando interface...\n");
-            if (initial_map_msg.data)
-            {
-                print_game_screen(initial_map_msg.data, 1);
-                free(initial_map_msg.data);
-            }
-        }
 
-        // Loop de jogo do Player (Movimentação)
-        while(1) {
-            // Futura implementação: ler teclado e enviar comando
-            sleep(1); 
+            if (result == TYPE_VISUAL) {
+                printf("Mapa recebido! Iniciando interface...\n");
+                if (msg.data)
+                {
+                    print_game_screen(msg.data, 1);
+                    free(msg.data);
+                    msg.data = NULL;
+                }
+            }
+
+            //Implementar logica de enviar comando e tals
         }
     }
 
@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
     {
         uint8_t last_processed_seq = 255;
         struct message received_msg;
+        received_msg.data = NULL;
         
         printf("Carregando o mapa!\n");
         GameState game = {0};
@@ -83,33 +84,37 @@ int main(int argc, char *argv[])
             // O servidor envia o mapa inicial ou atualizado
             send_map(file_desc, ifindex, global_sequence.value, &game);
 
-            // Espera ACK do mapa OU um novo comando do jogador
-            int type = listener_mode(file_desc, &received_msg);
+            // Espera ACK do mapa
+            int raw_type = listener_mode(file_desc, &received_msg);
+            int result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
             
-            if (type == -1) {
-                // Timeout no mapa: o loop volta e reenvia o mapa automaticamente
-                continue;
+            if (received_msg.data) { 
+                free(received_msg.data);
+                received_msg.data = NULL; 
             }
 
-            if (type == TYPE_ACK) {
-                // Mapa foi entregue! Agora esperamos o próximo comando do player.
-                // Avançamos a sequência para o próximo pacote que formos enviar.
+            if (result < 0) 
+                continue;
+
+            if (result == TYPE_ACK)
                 next_sequence();
-                continue;
-            }
 
-            // Se recebemos algo que não é ACK, tratamos como novo comando (se for seq nova)
-            if (type >= 10 && type <= 13) { // Movimentos
-                if(received_msg.sequence == last_processed_seq) {
-                    send_ack(file_desc, ifindex, received_msg.sequence); 
-                } else {
-                    send_ack(file_desc, ifindex, received_msg.sequence); 
+            // Espera novo comando do jogador
+            raw_type = listener_mode(file_desc, &received_msg);
+            result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
+
+            if (result >= 10 && result <= 13) {
+                if(received_msg.sequence != last_processed_seq) {
                     last_processed_seq = received_msg.sequence;
-                    // TODO: aplicar_movimento(type, &game);
+                    // TODO: aplicar_movimento(result, &game);
+                    next_sequence(); 
                 }
             }
 
-            if (received_msg.data) free(received_msg.data);
+            if (received_msg.data) {
+                free(received_msg.data);
+                received_msg.data = NULL;
+            }
         }
     }
 

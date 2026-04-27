@@ -89,31 +89,34 @@ int listener_mode(int32_t fd, struct message *received_msg) {
         ssize_t bytes_lidos = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr*)&src_addr, &addr_len);
         
         if (bytes_lidos < 0)
-            return -1; 
+            return LISTEN_TIMEOUT; 
 
         if (buffer[0] == 126) {
             uint8_t size = buffer[1] & 0x1F;
             uint8_t seq = (uint8_t)(((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F);
             uint8_t type = (buffer[2] >> 3) & 0x1F;
 
-            // Verifica CRC (do marcador até o byte antes do CRC)
-            if (crc8_bitwise(buffer, (size_t)(3 + size)) != buffer[3 + size]) {
-                printf("Erro: CRC inválido.\n");
-                continue;
-            }
-
-            // Popula a estrutura de retorno
+            // Popula a estrutura mesmo se o CRC puder falhar, para debug ou uso parcial
             if (received_msg != NULL) {
                 received_msg->start_marker = 126;
                 received_msg->size = (uint8_t)(size & 0x1F);
                 received_msg->sequence = (uint8_t)(seq & 0x3F);
                 received_msg->type = (uint8_t)(type & 0x1F);
-                if (size > 0) {
-                    received_msg->data = malloc(size);
+            }
+
+            // Verifica CRC (do marcador até o byte antes do CRC)
+            if (crc8_bitwise(buffer, (size_t)(3 + size)) != buffer[3 + size]) {
+                printf("Erro: CRC inválido.\n");
+                return LISTEN_CRC_ERROR;
+            }
+
+            if (received_msg != NULL && size > 0) {
+                received_msg->data = malloc(size);
+                if (received_msg->data) {
                     memcpy(received_msg->data, &buffer[3], size);
-                } else {
-                    received_msg->data = NULL;
                 }
+            } else if (received_msg != NULL) {
+                received_msg->data = NULL;
             }
              
             return (int)type; 
