@@ -25,6 +25,7 @@ struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void* 
 
 void next_sequence() {
     global_sequence.value = (uint8_t)((global_sequence.value + 1) & 0x3F);
+    printf("%d\n", global_sequence.value);
 }
 
 uint8_t *serialize_message(struct message *msg, size_t *final_size) {
@@ -112,25 +113,41 @@ void send_map(int fd, uint32_t ifindex, uint8_t seq, GameState *game)
     free(visible_grid);
 }
 
-int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq) {
-    if (listen_return == LISTEN_TIMEOUT) {
+int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq) 
+{
+    if (listen_return == LISTEN_TIMEOUT) 
         return listen_return;
-    }
 
-    if (listen_return == LISTEN_CRC_ERROR) {
+    if (listen_return == LISTEN_CRC_ERROR) 
+    {
         send_nack(fd, ifindex, expected_seq);
         return listen_return;
     }
 
-    // Se chegou aqui, listen_return é o TYPE da mensagem recebida e o CRC está ok
-    if (received_msg->sequence != expected_seq) {
-        send_nack(fd, ifindex, expected_seq);
+    if (listen_return == TYPE_ACK || listen_return == TYPE_NACK)
+    {
+        if (received_msg->sequence == expected_seq)
+        {
+            if (listen_return == TYPE_ACK)
+                next_sequence();
+            return listen_return;
+        }
         return LISTEN_SEQ_ERROR;
     }
 
-    if(listen_return != TYPE_ACK && listen_return != TYPE_NACK)
-        send_ack(fd, ifindex, received_msg->sequence);
+    // Para pacotes de dados/comandos
+    if (received_msg->sequence != expected_seq)
+    {
+        // Se a sequência for menor, o outro lado pode não ter recebido nosso ACK anterior
+        if (received_msg->sequence < expected_seq)
+            send_ack(fd, ifindex, received_msg->sequence);
+        else
+            send_nack(fd, ifindex, expected_seq);
+            
+        return LISTEN_SEQ_ERROR;
+    }
 
+    send_ack(fd, ifindex, received_msg->sequence);
     return listen_return;
 }
 
