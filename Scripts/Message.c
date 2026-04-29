@@ -113,6 +113,20 @@ void send_map(int fd, uint32_t ifindex, uint8_t seq, GameState *game)
     free(visible_grid);
 }
 
+void send_down(int fd, uint32_t ifindex, uint8_t seq)
+{
+    struct message *msg = create_message(0, TYPE_DOWN, seq, NULL);
+    size_t final_size;
+    uint8_t *buffer = serialize_message(msg, &final_size);
+    
+    if (buffer) {
+        send_message(fd, ifindex, buffer, &final_size);
+        free(buffer);
+    }
+    
+    free(msg);
+}
+
 int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq) 
 {
     if (listen_return == LISTEN_TIMEOUT) 

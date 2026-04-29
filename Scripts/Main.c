@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
         msg.data = NULL;
         int result = -1;
         int raw_type;
+        char command[20];
         
         while(1)
         {
@@ -57,11 +58,29 @@ int main(int argc, char *argv[])
                 msg.data = NULL;
             }
 
-            //Envia Comando (Ex: TYPE_UP) e espera o ACK correspondente
-            result = -1;
-            //while (result != TYPE_ACK) {
-                // Por enquanto enviaremos apenas o tipo (sem dados extras no comando)
-            //}
+            //Captura comando do usuário
+            printf("Comando: ");
+            while (scanf("%19s", command) == 1)
+            {
+                if (strcmp(command, "down") == 0)
+                {
+                    //Envia Comando (TYPE_DOWN) e espera o ACK correspondente
+                    result = -1;
+                    while (result != TYPE_ACK) 
+                    {
+                        send_down(file_desc, ifindex, global_sequence.value);
+                        raw_type = listener_mode(file_desc, &msg);
+                        result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+                    }
+                    break;
+                }
+                else
+                {
+                    printf("Comando invalido!\nOpcoes:\n 'down' - 'up' - 'left' - 'right'\n");
+                    printf("Comando: ");
+                    continue;
+                }
+            }
         }
     }
 
@@ -76,8 +95,6 @@ int main(int argc, char *argv[])
         GameState game = {0};
         init_game(&game);
         if (load_map_from_csv(&game, "Assets/mapa_padrao.csv") != 0) {
-            printf("Erro ao carregar mapa! Verifique Assets/mapa_padrao.csv\n");
-            return 1;
         }
         
         printf("Iniciando o servidor!\n");
@@ -85,10 +102,10 @@ int main(int argc, char *argv[])
         while(1)
         {
             //Envia o mapa e espera o ACK correspondente
-            send_map(file_desc, ifindex, global_sequence.value, &game);
             result = -1;
             while(result != TYPE_ACK)
             {
+                send_map(file_desc, ifindex, global_sequence.value, &game);
                 raw_type = listener_mode(file_desc, &received_msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
                 
@@ -115,6 +132,7 @@ int main(int argc, char *argv[])
 
             //Aqui trataremos a logica do jogo (Sequencia ja avancou no final do handle_listen_result)
             printf("Comando %d recebido!\n", result);
+            break; //para nao dar loop infinito, depois retirar
         }
     }
 
