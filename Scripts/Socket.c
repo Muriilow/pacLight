@@ -123,5 +123,3 @@ int listener_mode(int32_t fd, struct message *received_msg) {
         }
     }
 }
-
-// wait_response foi removida pois o listener_mode agora lida com tudo.

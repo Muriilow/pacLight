@@ -148,6 +148,7 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
     }
 
     send_ack(fd, ifindex, received_msg->sequence);
+    next_sequence();
     return listen_return;
 }
 

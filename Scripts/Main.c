@@ -35,40 +35,43 @@ int main(int argc, char *argv[])
         printf("Iniciando o jogador! Aguardando mapa inicial...\n");
         struct message msg;
         msg.data = NULL;
+        int result = -1;
+        int raw_type;
         
         while(1)
         {
-            int raw_type = listener_mode(file_desc, &msg);
-            int result = handle_listen_result(file_desc, ifindex, raw_type, &msg, msg.sequence);
-            
-            if(result < 0) {
-                if (msg.data) {
-                    free(msg.data); 
-                    msg.data = NULL;
-                }
-                continue;
+            //Espera o Mapa (Sequence atual)
+            result = -1;
+            while (result != TYPE_VISUAL) 
+            {
+                raw_type = listener_mode(file_desc, &msg);
+                result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
             }
 
-            if (result == TYPE_VISUAL) {
-                printf("Mapa recebido! Iniciando interface...\n");
-                if (msg.data)
-                {
-                    print_game_screen(msg.data, 1);
-                    free(msg.data);
-                    msg.data = NULL;
-                }
+            printf("Mapa recebido!\n");
+            print_game_screen(msg.data, 1);
+
+            if (msg.data)
+            {
+                free(msg.data); 
+                msg.data = NULL;
             }
 
-            //Implementar logica de enviar comando e tals
+            //Envia Comando (Ex: TYPE_UP) e espera o ACK correspondente
+            result = -1;
+            //while (result != TYPE_ACK) {
+                // Por enquanto enviaremos apenas o tipo (sem dados extras no comando)
+            //}
         }
     }
 
     if(strcmp(mode, "server") == 0)
     {
-        uint8_t last_processed_seq = 255;
         struct message received_msg;
         received_msg.data = NULL;
-        
+        int result = -1;
+        int raw_type;
+
         printf("Carregando o mapa!\n");
         GameState game = {0};
         init_game(&game);
@@ -81,40 +84,37 @@ int main(int argc, char *argv[])
 
         while(1)
         {
-            // O servidor envia o mapa inicial ou atualizado
+            //Envia o mapa e espera o ACK correspondente
             send_map(file_desc, ifindex, global_sequence.value, &game);
+            result = -1;
+            while(result != TYPE_ACK)
+            {
+                raw_type = listener_mode(file_desc, &received_msg);
+                result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
+                
+                if(received_msg.data)
+                    continue;
 
-            // Espera ACK do mapa
-            int raw_type = listener_mode(file_desc, &received_msg);
-            int result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
-            
-            if (received_msg.data) { 
-                free(received_msg.data);
-                received_msg.data = NULL; 
-            }
-
-            if (result < 0) 
-                continue;
-
-            if (result == TYPE_ACK)
-                next_sequence();
-
-            // Espera novo comando do jogador
-            raw_type = listener_mode(file_desc, &received_msg);
-            result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
-
-            if (result >= 10 && result <= 13) {
-                if(received_msg.sequence != last_processed_seq) {
-                    last_processed_seq = received_msg.sequence;
-                    // TODO: aplicar_movimento(result, &game);
-                    next_sequence(); 
-                }
-            }
-
-            if (received_msg.data) {
                 free(received_msg.data);
                 received_msg.data = NULL;
             }
+
+            //Esperando comando do player (ja com a nova sequencia)
+            result = -1;
+            while (result < 10 || result > 13) 
+            {
+                raw_type = listener_mode(file_desc, &received_msg);
+                result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
+                
+                if(received_msg.data)
+                    continue;
+
+                free(received_msg.data);
+                received_msg.data = NULL;
+            }
+
+            //Aqui trataremos a logica do jogo (Sequencia ja avancou no final do handle_listen_result)
+            printf("Comando %d recebido!\n", result);
         }
     }
 
