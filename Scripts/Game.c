@@ -66,7 +66,6 @@ void get_visible_map(GameState *game, char *buffer, int *size) {
 void print_game_screen(const char *visible_grid, int radius) {
     printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
     printf("PacLight - Pílulas: ?/6 | Visão: %d\n\n", radius);
-
     int k = 0;
     // Itera no bounding box, mas desenha apenas o que está no raio de Manhattan
     for (int i = -radius; i <= radius; i++) {
@@ -88,4 +87,75 @@ void print_game_screen(const char *visible_grid, int radius) {
         printf("\n");
     }
     printf("\nUse W/A/S/D para mover.\n");
+}
+int handle_move(GameState *game, uint16_t direction)
+{
+    switch (direction)
+    {
+    case 0:
+        if(game->grid[game->pacman_x - 1][game->pacman_y] != 'X')
+        {
+            printf("x-1 = %c",game->grid[game->pacman_x - 1][game->pacman_y]);
+            game->grid[game->pacman_x][game->pacman_y] = '.';
+            game->grid[game->pacman_x - 1][game->pacman_y] = 'P';
+            game->pacman_x --;
+        }
+        else game->move_count --;
+        break;
+    case 1:
+        if(game->grid[game->pacman_x + 1][game->pacman_y] != 'X')
+        {
+            game->grid[game->pacman_x][game->pacman_y] = '.';
+            game->grid[game->pacman_x + 1][game->pacman_y] = 'P';
+            game->pacman_x ++;
+        }
+        else game->move_count --;
+        break;
+    case 2:
+        if(game->grid[game->pacman_x][game->pacman_y - 1] != 'X')
+        {
+            game->grid[game->pacman_x][game->pacman_y] = '.';
+            game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
+            game->pacman_y --;
+        }
+        else game->move_count --;
+        break;
+    case 3:
+        if(game->grid[game->pacman_x][game->pacman_y + 1] != 'X')
+        {
+            game->grid[game->pacman_x][game->pacman_y] = '.';
+            game->grid[game->pacman_x][game->pacman_y + 1] = 'P';
+            game->pacman_y ++;
+        }
+        else game->move_count --;
+        break;
+    default:
+        printf("Wrong arguments");
+        return -1;
+    }
+    return 0;
+}
+void update_map(GameState *game)
+{  
+    game->move_count ++;
+    return;
+}
+
+void server_print_map(GameState *game){
+    // Itera no bounding box, mas desenha apenas o que está no raio de Manhattan
+    for (int i = 0; i < MAP_SIZE; i++) {
+        for (int j = 0; j < MAP_SIZE; j++) {
+            char cell = game->grid[i][j];
+            switch (cell) {
+                case 'P': printf("\033[1;33mP \033[0m"); break; // Amarelo (2 chars)
+                case 'X': printf("\033[1;34m# \033[0m"); break; // Azul (2 chars)
+                case '0': printf(". "); break;                  // Ponto (2 chars)
+                case '1': case '2': case '3': 
+                case '4': case '5': case '6': printf("\033[1;32m. \033[0m"); break; // Verde (2 chars)
+                default: printf("%c ", cell); break;
+            }
+        }
+            printf("\n");
+    }
+    printf("Move counter: %d\n",game->move_count);
 }

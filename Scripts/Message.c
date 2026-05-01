@@ -25,7 +25,7 @@ struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void* 
 
 void next_sequence() {
     global_sequence.value = (uint8_t)((global_sequence.value + 1) & 0x3F);
-    printf("%d\n", global_sequence.value);
+    //printf("%d\n", global_sequence.value);
 }
 
 uint8_t *serialize_message(struct message *msg, size_t *final_size) {
@@ -53,6 +53,7 @@ void send_ack(int fd, uint32_t ifindex, uint8_t seq) {
     size_t final_size;
     uint8_t *buffer = serialize_message(msg, &final_size);
     if (buffer) {
+        printf("ACK ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }
@@ -64,6 +65,7 @@ void send_nack(int fd, uint32_t ifindex, uint8_t seq) {
     size_t final_size;
     uint8_t *buffer = serialize_message(msg, &final_size);
     if (buffer) {
+        printf("NACK ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }
@@ -78,8 +80,8 @@ void send_map(int fd, uint32_t ifindex, uint8_t seq, GameState *game)
     char *visible_grid = malloc((size_t)num_cells);
     if (!visible_grid) return;
 
-    int x_axis = game->pacman_x;
-    int y_axis = game->pacman_y;
+    int y_axis = game->pacman_x; //é visão tá andando no eixo errado trocar x e y nessa linha e na de baixo resolveu e não rodou a visão
+    int x_axis = game->pacman_y;
     int k = 0;
 
     for (int i = -side; i <= side; i++) {
@@ -105,6 +107,7 @@ void send_map(int fd, uint32_t ifindex, uint8_t seq, GameState *game)
     uint8_t *buffer = serialize_message(msg, &final_size);
     
     if (buffer) {
+        printf("MAP ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }
@@ -112,7 +115,20 @@ void send_map(int fd, uint32_t ifindex, uint8_t seq, GameState *game)
     free(msg);
     free(visible_grid);
 }
-
+void send_up(int fd, uint32_t ifindex, uint8_t seq)
+{
+    struct message *msg = create_message(0, TYPE_UP, seq, NULL);
+    size_t final_size;
+    uint8_t *buffer = serialize_message(msg, &final_size);
+    
+    if (buffer) {
+        printf("UP  ");
+        send_message(fd, ifindex, buffer, &final_size);
+        free(buffer);
+    }
+    
+    free(msg);
+}
 void send_down(int fd, uint32_t ifindex, uint8_t seq)
 {
     struct message *msg = create_message(0, TYPE_DOWN, seq, NULL);
@@ -120,6 +136,35 @@ void send_down(int fd, uint32_t ifindex, uint8_t seq)
     uint8_t *buffer = serialize_message(msg, &final_size);
     
     if (buffer) {
+        printf("DOW ");
+        send_message(fd, ifindex, buffer, &final_size);
+        free(buffer);
+    }
+    
+    free(msg);
+}
+void send_left(int fd, uint32_t ifindex, uint8_t seq)
+{
+    struct message *msg = create_message(0, TYPE_LEFT, seq, NULL);
+    size_t final_size;
+    uint8_t *buffer = serialize_message(msg, &final_size);
+    
+    if (buffer) {
+        printf("LEF ");
+        send_message(fd, ifindex, buffer, &final_size);
+        free(buffer);
+    }
+    
+    free(msg);
+}
+void send_right(int fd, uint32_t ifindex, uint8_t seq)
+{
+    struct message *msg = create_message(0, TYPE_RIGHT, seq, NULL);
+    size_t final_size;
+    uint8_t *buffer = serialize_message(msg, &final_size);
+    
+    if (buffer) {
+        printf("RIG ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }
@@ -148,7 +193,9 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
         }
         return LISTEN_SEQ_ERROR;
     }
-
+    if (listen_return >= 10 && listen_return <= 13){
+        return(listen_return);
+    }
     // Para pacotes de dados/comandos
     if (received_msg->sequence != expected_seq)
     {

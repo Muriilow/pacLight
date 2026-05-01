@@ -16,6 +16,16 @@
 #include "Message.h"
 #include "Game.h"
 
+typedef enum { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT , MOVE_UNKNOWN} Moves;
+
+Moves stringToEnum(char *str) {
+    if (strcmp(str, "w") == 0) return MOVE_UP;
+    if (strcmp(str, "s") == 0) return MOVE_DOWN;
+    if (strcmp(str, "a") == 0) return MOVE_LEFT;
+    if (strcmp(str, "d") == 0) return MOVE_RIGHT;
+    return MOVE_UNKNOWN;
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 2)
@@ -38,16 +48,20 @@ int main(int argc, char *argv[])
         int result = -1;
         int raw_type;
         char command[20];
+
+        while (result != TYPE_VISUAL) 
+        {
+            printf("waiting map\n");
+            raw_type = listener_mode(file_desc, &msg);
+            result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+        }
+        printf("Mapa recebido!\n");
+        print_game_screen(msg.data, 1);
         
         while(1)
         {
             //Espera o Mapa (Sequence atual)
             result = -1;
-            while (result != TYPE_VISUAL) 
-            {
-                raw_type = listener_mode(file_desc, &msg);
-                result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
-            }
 
             printf("Mapa recebido!\n");
             print_game_screen(msg.data, 1);
@@ -61,26 +75,56 @@ int main(int argc, char *argv[])
             //Captura comando do usuário
             printf("Comando: ");
             while (scanf("%19s", command) == 1)
-            {
-                if (strcmp(command, "down") == 0)
+            {   
+                result = -1;
+                switch(stringToEnum(command))
                 {
-                    //Envia Comando (TYPE_DOWN) e espera o ACK correspondente
-                    result = -1;
-                    while (result != TYPE_ACK) 
-                    {
-                        send_down(file_desc, ifindex, global_sequence.value);
-                        raw_type = listener_mode(file_desc, &msg);
-                        result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
-                    }
-                    break;
+                    case MOVE_UP:
+                        while (result != TYPE_VISUAL) 
+                        {
+                            send_up(file_desc, ifindex, global_sequence.value);
+                            printf("waiting map\n");
+                            raw_type = listener_mode(file_desc, &msg);
+                            result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+                        }
+                        break;
+                    case MOVE_DOWN:
+                        //Envia Comando (TYPE_DOWN) e espera o ACK correspondente
+                        while (result != TYPE_VISUAL) 
+                        {
+                            send_down(file_desc, ifindex, global_sequence.value);
+                            printf("waiting map\n");
+                            raw_type = listener_mode(file_desc, &msg);
+                            result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+                        }
+                        break;
+                    case MOVE_LEFT:
+                        while (result != TYPE_VISUAL)
+                        {
+                            send_left(file_desc, ifindex, global_sequence.value);
+                            printf("waiting map\n");
+                            raw_type = listener_mode(file_desc, &msg);
+                            result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+                        }
+                        break;
+                    case MOVE_RIGHT:
+                        while (result != TYPE_VISUAL) 
+                        {
+                            send_right(file_desc, ifindex, global_sequence.value);
+                            printf("waiting map\n");
+                            raw_type = listener_mode(file_desc, &msg);
+                            result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+                        }
+                        break;
+                    default:
+                        printf("Comando invalido!\nOpcoes:\n 'w' - 'a' - 's' - 'd'\n");
+                        printf("Comando: ");
+                        continue;
                 }
-                else
-                {
-                    printf("Comando invalido!\nOpcoes:\n 'down' - 'up' - 'left' - 'right'\n");
-                    printf("Comando: ");
-                    continue;
-                }
+                break;
+                printf("while scan\n");
             }
+            printf("while fora\n");
         }
     }
 
@@ -96,7 +140,7 @@ int main(int argc, char *argv[])
         init_game(&game);
         if (load_map_from_csv(&game, "Assets/mapa_padrao.csv") != 0) {
         }
-        
+        server_print_map(&game);
         printf("Iniciando o servidor!\n");
 
         while(1)
@@ -105,7 +149,9 @@ int main(int argc, char *argv[])
             result = -1;
             while(result != TYPE_ACK)
             {
+
                 send_map(file_desc, ifindex, global_sequence.value, &game);
+                printf("waiting ack\n");
                 raw_type = listener_mode(file_desc, &received_msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
                 
@@ -120,19 +166,50 @@ int main(int argc, char *argv[])
             result = -1;
             while (result < 10 || result > 13) 
             {
+                printf("waiting input\n");
                 raw_type = listener_mode(file_desc, &received_msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
-                
-                if(received_msg.data)
+                if(received_msg.data){
                     continue;
-
+                }
                 free(received_msg.data);
                 received_msg.data = NULL;
             }
 
             //Aqui trataremos a logica do jogo (Sequencia ja avancou no final do handle_listen_result)
             printf("Comando %d recebido!\n", result);
-            break; //para nao dar loop infinito, depois retirar
+            switch (result)
+            {
+                case TYPE_UP:
+                    handle_move(&game, 0);
+                    update_map(&game);
+                    server_print_map(&game);
+                    break;
+                case TYPE_DOWN:
+                    handle_move(&game, 1);
+                    update_map(&game);
+                    server_print_map(&game);
+                    break;
+                case TYPE_LEFT:
+                    handle_move(&game, 2);
+                    update_map(&game);
+                    server_print_map(&game);
+                    break;
+                case TYPE_RIGHT:
+                    printf("==direita==\n");
+                    handle_move(&game, 3);
+                    update_map(&game);
+                    server_print_map(&game);
+                    break;
+                default:
+                    break;
+            }
+            if(received_msg.data)
+            {
+                free(received_msg.data);
+                received_msg.data = NULL;
+            }            
+            //break; //para nao dar loop infinito, depois retirar
         }
     }
 

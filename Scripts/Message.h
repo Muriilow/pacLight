@@ -22,7 +22,7 @@
 
 #define LISTEN_TIMEOUT -1
 #define LISTEN_CRC_ERROR -2
-#define LISTEN_SEQ_ERROR -3
+#define LISTEN_SEQ_ERROR -3             
 
 struct __attribute__((packed)) global_sequence {
     uint8_t value : 6;
@@ -45,7 +45,10 @@ void next_sequence();
 void send_ack(int fd, uint32_t ifindex, uint8_t seq);
 void send_nack(int fd, uint32_t ifindex, uint8_t seq);
 void send_map(int fd, uint32_t ifindex, uint8_t seq, GameState *game);
+void send_up(int fd, uint32_t ifindex, uint8_t seq);
 void send_down(int fd, uint32_t ifindex, uint8_t seq);
+void send_left(int fd, uint32_t ifindex, uint8_t seq);
+void send_right(int fd, uint32_t ifindex, uint8_t seq);
 uint8_t crc8_bitwise(const uint8_t *data, size_t size);
 int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq);
 
