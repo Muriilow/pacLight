@@ -16,13 +16,14 @@
 #include "Message.h"
 #include "Game.h"
 
-typedef enum { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT , MOVE_UNKNOWN} Moves;
+typedef enum { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT , ASK_JPG, MOVE_UNKNOWN} Moves;
 
 Moves stringToEnum(char *str) {
-    if (strcmp(str, "w") == 0) return MOVE_UP;
-    if (strcmp(str, "s") == 0) return MOVE_DOWN;
-    if (strcmp(str, "a") == 0) return MOVE_LEFT;
-    if (strcmp(str, "d") == 0) return MOVE_RIGHT;
+    if (strcasecmp(str, "w") == 0) return MOVE_UP;
+    if (strcasecmp(str, "s") == 0) return MOVE_DOWN;
+    if (strcasecmp(str, "a") == 0) return MOVE_LEFT;
+    if (strcasecmp(str, "d") == 0) return MOVE_RIGHT;
+    if (strcasecmp(str, "k") == 0) return ASK_JPG;
     return MOVE_UNKNOWN;
 }
 
@@ -80,6 +81,7 @@ int main(int argc, char *argv[])
                 switch(stringToEnum(command))
                 {
                     case MOVE_UP:
+                    //Envia Comando (TYPE_UP) e espera a nova visualização
                         while (result != TYPE_VISUAL) 
                         {
                             send_up(file_desc, ifindex, global_sequence.value);
@@ -89,7 +91,6 @@ int main(int argc, char *argv[])
                         }
                         break;
                     case MOVE_DOWN:
-                        //Envia Comando (TYPE_DOWN) e espera o ACK correspondente
                         while (result != TYPE_VISUAL) 
                         {
                             send_down(file_desc, ifindex, global_sequence.value);
@@ -116,15 +117,27 @@ int main(int argc, char *argv[])
                             result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
                         }
                         break;
+                    case ASK_JPG:
+                        fprintf(stderr, "asking IMAGE\n");
+                        struct message *msg = create_message(0, TYPE_ASK, global_sequence.value, NULL);
+                        size_t final_size;
+                        uint8_t *buffer = serialize_message(msg, &final_size);
+                        if (buffer) {
+                            printf("ASK ");
+                            send_message(file_desc, ifindex, buffer, &final_size);
+                            free(buffer);
+                        }
+                        free(msg);
+                        waitJPG(file_desc, ifindex);
+                        break;
                     default:
-                        printf("Comando invalido!\nOpcoes:\n 'w' - 'a' - 's' - 'd'\n");
+                        printf("Comando invalido!\nOpcoes:\n 'w' - 'a' - 's' - 'd' - 'k'\n");
                         printf("Comando: ");
                         continue;
-                }
-                break;
+                }                
                 printf("while scan\n");
+                break;
             }
-            printf("while fora\n");
         }
     }
 
@@ -134,6 +147,7 @@ int main(int argc, char *argv[])
         received_msg.data = NULL;
         int result = -1;
         int raw_type;
+        int moved = 1;
 
         printf("Carregando o mapa!\n");
         GameState game = {0};
@@ -144,28 +158,29 @@ int main(int argc, char *argv[])
         printf("Iniciando o servidor!\n");
 
         while(1)
-        {
-            //Envia o mapa e espera o ACK correspondente
-            result = -1;
-            while(result != TYPE_ACK)
-            {
+        {   
+            if (moved){
+                //Envia o mapa e espera o ACK correspondente
+                while(result != TYPE_ACK)
+                {
 
-                send_map(file_desc, ifindex, global_sequence.value, &game);
-                printf("waiting ack\n");
-                raw_type = listener_mode(file_desc, &received_msg);
-                result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
+                    send_map(file_desc, ifindex, global_sequence.value, &game);
+                    printf("waiting ack\n");
+                    raw_type = listener_mode(file_desc, &received_msg);
+                    result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
                 
-                if(received_msg.data)
+                    if(received_msg.data)
                     continue;
 
-                free(received_msg.data);
-                received_msg.data = NULL;
+                    free(received_msg.data);
+                    received_msg.data = NULL;
+                }
+                fprintf(stderr,"ACK RECEBIDO\n");
+                moved = 0;
             }
-
             //Esperando comando do player (ja com a nova sequencia)
-            result = -1;
-            while (result < 10 || result > 13) 
-            {
+            
+            
                 printf("waiting input\n");
                 raw_type = listener_mode(file_desc, &received_msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
@@ -174,7 +189,9 @@ int main(int argc, char *argv[])
                 }
                 free(received_msg.data);
                 received_msg.data = NULL;
-            }
+
+            if (result >= 10 || result <= 13) 
+                moved = 1;
 
             //Aqui trataremos a logica do jogo (Sequencia ja avancou no final do handle_listen_result)
             printf("Comando %d recebido!\n", result);
@@ -196,10 +213,14 @@ int main(int argc, char *argv[])
                     server_print_map(&game);
                     break;
                 case TYPE_RIGHT:
-                    printf("==direita==\n");
                     handle_move(&game, 3);
                     update_map(&game);
                     server_print_map(&game);
+                    break;
+                case TYPE_ASK:
+                    fprintf(stderr, "SENDING IMAGE seq: %d\n",global_sequence.value);
+                    send_jpg(file_desc, ifindex, global_sequence.value, "turtle");
+
                     break;
                 default:
                     break;

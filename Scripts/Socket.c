@@ -76,7 +76,7 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
     if(send_bytes == -1) {
         perror("Erro ao enviar pacote");
     } else {
-        printf("Mensagem enviada: %zd bytes na interface %d\n", send_bytes, ifindex);
+        printf("Mensagem %d enviada: %zd bytes na interface %d\n",global_sequence.value, send_bytes, ifindex);
     }
 }
 

@@ -22,6 +22,29 @@ struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void* 
 
     return new_message;
 }
+char* name_handle(char* name, int type){
+    size_t size = strlen(name);
+    fprintf(stderr,"\n\nsize:%ld\n\n", size);
+    char* final = malloc(size+10);
+
+    switch (type){
+        case TYPE_JPG:
+            sprintf(final,"Send/%s.jpg", name);
+            break;
+        case TYPE_TXT:
+            sprintf(final,"Send/%s.txt", name);
+            break;
+        case TYPE_MP4:
+            sprintf(final,"Send/%s.mp4", name);
+            break;
+        default:
+            free(final);
+            return NULL;
+    }
+    
+    fprintf(stderr, "%s", final);
+    return final;
+}
 
 void next_sequence() {
     global_sequence.value = (uint8_t)((global_sequence.value + 1) & 0x3F);
@@ -115,6 +138,7 @@ void send_map(int fd, uint32_t ifindex, uint8_t seq, GameState *game)
     free(msg);
     free(visible_grid);
 }
+
 void send_up(int fd, uint32_t ifindex, uint8_t seq)
 {
     struct message *msg = create_message(0, TYPE_UP, seq, NULL);
@@ -171,6 +195,132 @@ void send_right(int fd, uint32_t ifindex, uint8_t seq)
     
     free(msg);
 }
+void send_jpg(int fd, uint32_t ifindex, uint8_t seq, char* name){
+
+    fprintf(stderr, "ENTROU JPG seq: %d\n", seq);
+    uint32_t n_size = (uint32_t) strlen(name)+1;
+    if (n_size > 32){
+        fprintf(stderr,"Nome muito grande\n");
+        return;
+    }
+    int result = -1;
+    int raw_type;
+    struct message ack_addr;
+
+    struct message *msg = create_message(n_size, TYPE_JPG, seq, name);
+    size_t final_size;
+    uint8_t *buffer = serialize_message(msg, &final_size);
+
+    while(result != TYPE_ACK)
+    {   
+        printf("JPG %s ", name);
+        send_message(fd, ifindex, buffer, &final_size);
+        printf("waiting ack\n");
+        raw_type = listener_mode(fd, &ack_addr);
+        result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+
+        if(ack_addr.data)
+            continue;
+
+        free(ack_addr.data);
+        ack_addr.data = NULL;
+    }
+    seq++;
+    if (buffer)
+        free(buffer);
+    free(msg);
+
+
+    FILE *fptr = fopen(name_handle(name, TYPE_JPG), "rb");
+    if (fptr == NULL) return;
+
+    fseek(fptr, 0, SEEK_END);
+    long size = ftell(fptr);
+    if(size < 0){
+        printf("ftell error\n");
+        return;
+    }
+
+    fseek(fptr, 0, SEEK_SET);
+
+    uint32_t seg_size;
+    for(int i = 0; i < size - size%MAX_DATA; i += MAX_DATA){
+        char file_data[MAX_DATA];
+        seg_size = (uint32_t) fread(file_data, 1, MAX_DATA, fptr);
+        if (seg_size != MAX_DATA){
+            fseek(fptr, -seg_size, SEEK_CUR);
+        }
+        else
+        {//tamanho do buffer maior que tamanho da mensagem
+
+            msg = create_message(MAX_DATA, TYPE_DATA, seq, file_data);
+            buffer = serialize_message(msg, &final_size);
+            result = -1;
+            while(result != TYPE_ACK)
+            {
+                printf("DATA %d ", seq);
+                send_message(fd, ifindex, buffer, &final_size);
+                printf("waiting ack\n");
+                raw_type = listener_mode(fd, &ack_addr);
+                result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+
+                if(ack_addr.data)
+                    continue;
+
+                free(ack_addr.data);
+                ack_addr.data = NULL;
+            }
+            seq++;
+            if(buffer)
+                free(buffer);
+            free(msg);
+        }
+    } 
+    char file_data[MAX_DATA];
+    fread(file_data, 1, MAX_DATA, fptr);
+    msg = create_message((uint32_t)(size-size%MAX_DATA), TYPE_DATA, seq, file_data);
+    buffer = serialize_message(msg, &final_size);
+    result = -1;
+    while(result != TYPE_ACK)
+    {   
+        send_message(fd, ifindex, buffer, &final_size);
+        printf("waiting ack\n");
+        raw_type = listener_mode(fd, &ack_addr);
+        result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+
+        if(ack_addr.data)
+            continue;
+
+        free(ack_addr.data);
+        ack_addr.data = NULL;
+    }
+    if(buffer)
+        free(buffer);
+    free(msg);
+
+    msg = create_message(0, TYPE_END, seq, NULL);
+    buffer = serialize_message(msg, &final_size);
+
+    result = -1;
+    while(result != TYPE_ACK)
+    {   
+        printf("END ");
+        send_message(fd, ifindex, buffer, &final_size);
+        printf("waiting ack\n");
+        raw_type = listener_mode(fd, &ack_addr);
+        result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+
+        if(ack_addr.data)
+            continue;
+
+        free(ack_addr.data);
+        ack_addr.data = NULL;
+    }
+    if (buffer)
+        free(buffer);
+    free(msg);
+        fclose(fptr);
+}
 
 int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq) 
 {
@@ -179,6 +329,7 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
 
     if (listen_return == LISTEN_CRC_ERROR) 
     {
+        fprintf(stderr, "ERRO DE CRC\n");
         send_nack(fd, ifindex, expected_seq);
         return listen_return;
     }
@@ -194,7 +345,7 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
         return LISTEN_SEQ_ERROR;
     }
     if (listen_return >= 10 && listen_return <= 13){
-        return(listen_return);
+        return listen_return;
     }
     // Para pacotes de dados/comandos
     if (received_msg->sequence != expected_seq)
@@ -202,9 +353,11 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
         // Se a sequência for menor, o outro lado pode não ter recebido nosso ACK anterior
         if (received_msg->sequence < expected_seq)
             send_ack(fd, ifindex, received_msg->sequence);
-        else
+        else{
+
+            fprintf(stderr, "ERRO DE SEQUENCIA - Recebido:%d Esperado:%d\n",received_msg->sequence, expected_seq);
             send_nack(fd, ifindex, expected_seq);
-            
+        } 
         return LISTEN_SEQ_ERROR;
     }
 
@@ -227,4 +380,31 @@ uint8_t crc8_bitwise(const uint8_t *data, size_t size) {
         }
     }
     return crc;
+}
+
+void waitJPG(int fd, uint32_t ifindex){
+    struct message received_msg;
+    int result = -1;
+    int raw_type;
+    while(result != TYPE_JPG){
+        fprintf(stderr, "waiting type jpg\n");
+        raw_type = listener_mode(fd, &received_msg);
+        result = handle_listen_result(fd, ifindex, raw_type, &received_msg, global_sequence.value);
+    }
+    char name[42] = "Receive/"; //(tamanho de "Receive/")8  + 32 + 1 para termindaor nulo
+    
+    char* data_ptr = (char*)received_msg.data;
+    snprintf(name, sizeof(name), "Receive/%s.jpg", data_ptr);
+    
+    fprintf(stderr,"\n\nNOME: %s \n\n", name);
+    FILE* new_file = fopen(name, "wb");
+    result = -1;
+    while(result != TYPE_END){
+        fprintf(stderr, "waiting type end\n");
+        raw_type = listener_mode(fd, &received_msg);
+        result = handle_listen_result(fd, ifindex, raw_type, &received_msg, global_sequence.value);
+        if(result == TYPE_DATA)
+            fwrite(received_msg.data, 1, received_msg.size, new_file);
+    }
+    fprintf(stderr, "ending\n");
 }

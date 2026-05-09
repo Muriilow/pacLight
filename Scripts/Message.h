@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>
+
 #include "Game.h"
 
 #define TYPE_ACK  0
@@ -13,12 +15,16 @@
 #define TYPE_TXT 5
 #define TYPE_JPG 6 
 #define TYPE_MP4 7
+#define TYPE_END 8
 #define TYPE_RIGHT 10
 #define TYPE_LEFT 11
 #define TYPE_DOWN 12
 #define TYPE_UP 13
 #define TYPE_ERROR 15 
-#define TYPE_END 16 
+#define TYPE_EXIT 16 
+#define TYPE_ASK 17
+
+#define MAX_DATA 31
 
 #define LISTEN_TIMEOUT -1
 #define LISTEN_CRC_ERROR -2
@@ -38,7 +44,6 @@ struct __attribute__((packed)) message {
 };
 
 extern struct global_sequence global_sequence;
-
 struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void *data);
 uint8_t *serialize_message(struct message *msg, size_t *final_size);
 void next_sequence();
@@ -49,7 +54,9 @@ void send_up(int fd, uint32_t ifindex, uint8_t seq);
 void send_down(int fd, uint32_t ifindex, uint8_t seq);
 void send_left(int fd, uint32_t ifindex, uint8_t seq);
 void send_right(int fd, uint32_t ifindex, uint8_t seq);
+void send_jpg(int fd, uint32_t ifindex, uint8_t seq, char* name);
 uint8_t crc8_bitwise(const uint8_t *data, size_t size);
 int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq);
+void waitJPG(int fd, uint32_t ifindex);
 
 #endif
