@@ -64,7 +64,7 @@ void get_visible_map(GameState *game, char *buffer, int *size) {
 }
 
 void print_game_screen(const char *visible_grid, int radius) {
-    printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
+    //printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
     printf("PacLight - Pílulas: ?/6 | Visão: %d\n\n", radius);
     int k = 0;
     // Itera no bounding box, mas desenha apenas o que está no raio de Manhattan

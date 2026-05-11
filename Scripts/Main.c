@@ -49,21 +49,16 @@ int main(int argc, char *argv[])
         int result = -1;
         int raw_type;
         char command[20];
-
-        while (result != TYPE_VISUAL) 
-        {
-            printf("waiting map\n");
-            raw_type = listener_mode(file_desc, &msg);
-            result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
-        }
-        printf("Mapa recebido!\n");
-        print_game_screen(msg.data, 1);
         
         while(1)
         {
             //Espera o Mapa (Sequence atual)
             result = -1;
-
+            {
+            printf("waiting map\n");
+                raw_type = listener_mode(file_desc, &msg);
+                result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+            }
             printf("Mapa recebido!\n");
             print_game_screen(msg.data, 1);
 
@@ -135,7 +130,7 @@ int main(int argc, char *argv[])
                         printf("Comando: ");
                         continue;
                 }                
-                printf("while scan\n");
+                fprintf(stderr, "while scan\n");
                 break;
             }
         }

@@ -244,7 +244,8 @@ void send_jpg(int fd, uint32_t ifindex, uint8_t seq, char* name){
     fseek(fptr, 0, SEEK_SET);
 
     uint32_t seg_size;
-    for(int i = 0; i < size - size%MAX_DATA; i += MAX_DATA){
+    for(long i = 0; i <= size - size%MAX_DATA; i += MAX_DATA){
+        fprintf(stderr,"Tamanho total: %ld tamanho atual: %ld\n",size, i);
         char file_data[MAX_DATA];
         seg_size = (uint32_t) fread(file_data, 1, MAX_DATA, fptr);
         if (seg_size != MAX_DATA){
@@ -276,13 +277,15 @@ void send_jpg(int fd, uint32_t ifindex, uint8_t seq, char* name){
             free(msg);
         }
     } 
-    char file_data[MAX_DATA];
-    fread(file_data, 1, MAX_DATA, fptr);
-    msg = create_message((uint32_t)(size-size%MAX_DATA), TYPE_DATA, seq, file_data);
+    fprintf(stderr,"LAST LINE\n");
+    char file_data[size%MAX_DATA];
+    fread(file_data, 1, (size_t)size%MAX_DATA, fptr);
+    msg = create_message((uint32_t)(size%MAX_DATA), TYPE_DATA, seq, file_data);
     buffer = serialize_message(msg, &final_size);
     result = -1;
     while(result != TYPE_ACK)
     {   
+        printf("DATA %d ", seq);
         send_message(fd, ifindex, buffer, &final_size);
         printf("waiting ack\n");
         raw_type = listener_mode(fd, &ack_addr);
@@ -294,10 +297,11 @@ void send_jpg(int fd, uint32_t ifindex, uint8_t seq, char* name){
         free(ack_addr.data);
         ack_addr.data = NULL;
     }
+    seq++;
     if(buffer)
         free(buffer);
     free(msg);
-
+    fprintf(stderr,"ENDING\n");
     msg = create_message(0, TYPE_END, seq, NULL);
     buffer = serialize_message(msg, &final_size);
 
@@ -310,12 +314,16 @@ void send_jpg(int fd, uint32_t ifindex, uint8_t seq, char* name){
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
 
+        if(result == TYPE_ACK){
+            fprintf(stderr, "ACK RECEBIDO\n");
+        }
         if(ack_addr.data)
             continue;
 
         free(ack_addr.data);
         ack_addr.data = NULL;
     }
+    
     if (buffer)
         free(buffer);
     free(msg);
@@ -351,11 +359,10 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
     if (received_msg->sequence != expected_seq)
     {
         // Se a sequência for menor, o outro lado pode não ter recebido nosso ACK anterior
-        if (received_msg->sequence < expected_seq)
-            send_ack(fd, ifindex, received_msg->sequence);
-        else{
-
+        if (received_msg->sequence < expected_seq){
             fprintf(stderr, "ERRO DE SEQUENCIA - Recebido:%d Esperado:%d\n",received_msg->sequence, expected_seq);
+            send_ack(fd, ifindex, received_msg->sequence);
+        }else{
             send_nack(fd, ifindex, expected_seq);
         } 
         return LISTEN_SEQ_ERROR;
@@ -399,12 +406,19 @@ void waitJPG(int fd, uint32_t ifindex){
     fprintf(stderr,"\n\nNOME: %s \n\n", name);
     FILE* new_file = fopen(name, "wb");
     result = -1;
+    //não ta finalizando(devo ter esquecido alguma lógica na finalização)
     while(result != TYPE_END){
-        fprintf(stderr, "waiting type end\n");
         raw_type = listener_mode(fd, &received_msg);
         result = handle_listen_result(fd, ifindex, raw_type, &received_msg, global_sequence.value);
+        fprintf(stderr,"result in wait: %d\n", result);
         if(result == TYPE_DATA)
             fwrite(received_msg.data, 1, received_msg.size, new_file);
+        if(result == TYPE_END){
+            fprintf(stderr,"END RECEIVED\n");
+        }
+        
     }
+    fprintf(stderr,"TAMANHO FINAL: %ld\n",ftell(new_file));
+    fclose(new_file);
     fprintf(stderr, "ending\n");
 }
