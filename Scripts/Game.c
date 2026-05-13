@@ -88,50 +88,138 @@ void print_game_screen(const char *visible_grid, int radius) {
     }
     printf("\nUse W/A/S/D para mover.\n");
 }
+
 int handle_move(GameState *game, uint16_t direction)
 {
     switch (direction)
     {
     case 0:
-        if(game->grid[game->pacman_x - 1][game->pacman_y] != 'X')
-        {
-            printf("x-1 = %c",game->grid[game->pacman_x - 1][game->pacman_y]);
-            game->grid[game->pacman_x][game->pacman_y] = '.';
-            game->grid[game->pacman_x - 1][game->pacman_y] = 'P';
-            game->pacman_x --;
+        fprintf(stderr,"UP  ");
+        char colision = game->grid[game->pacman_x - 1][game->pacman_y];
+        switch(colision){
+            case ('X'):
+                game->move_count --;
+                break;
+            case('1'):
+            case('2'):
+            case('3'):
+            case('4'):
+            case('5'):
+            case('6'):
+                printf("x-1 = %c\n",game->grid[game->pacman_x - 1][game->pacman_y]);
+                game->grid[game->pacman_x][game->pacman_y] = '.';
+                game->grid[game->pacman_x - 1][game->pacman_y] = 'P';
+                game->pacman_x --;
+                return atoi(&colision);
+            case('R'):
+            case('G'):
+            case('B'):
+            case('Y'):
+                return 8;          
+            default:
+                printf("x-1 = %c\n",game->grid[game->pacman_x - 1][game->pacman_y]);
+                game->grid[game->pacman_x][game->pacman_y] = '.';
+                game->grid[game->pacman_x - 1][game->pacman_y] = 'P';
+                game->pacman_x --;
+                break;
         }
-        else game->move_count --;
         break;
     case 1:
-        if(game->grid[game->pacman_x + 1][game->pacman_y] != 'X')
+        fprintf(stderr,"DOWN  ");
+        colision = game->grid[game->pacman_x + 1][game->pacman_y];
+        switch(colision)
         {
+        case ('X'):
+            game->move_count --;
+            break;
+        case('1'):
+        case('2'):
+        case('3'):
+        case('4'):
+        case('5'):
+        case('6'):
+            printf("x+1 = %c\n",game->grid[game->pacman_x + 1][game->pacman_y]);
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[game->pacman_x + 1][game->pacman_y] = 'P';
             game->pacman_x ++;
+            return atoi(&colision);
+        case('R'):
+        case('G'):
+        case('B'):
+        case('Y'):
+            return 8;          
+        default:
+            printf("x+1 = %c\n",game->grid[game->pacman_x + 1][game->pacman_y]);
+            game->grid[game->pacman_x][game->pacman_y] = '.';
+            game->grid[game->pacman_x + 1][game->pacman_y] = 'P';
+            game->pacman_x ++;
+            break;
         }
-        else game->move_count --;
         break;
     case 2:
-        if(game->grid[game->pacman_x][game->pacman_y - 1] != 'X')
+        fprintf(stderr,"LEFT  ");
+        colision = game->grid[game->pacman_x][game->pacman_y - 1];
+        switch(colision)
         {
+        case ('X'):
+            game->move_count --;
+            break;
+        case('1'):
+        case('2'):
+        case('3'):
+        case('4'):
+        case('5'):
+        case('6'):
+            printf("y-1 = %c\n",game->grid[game->pacman_x][game->pacman_y - 1]);
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
-            game->pacman_y --;
+            game->pacman_x ++;
+            return atoi(&colision);
+        case('R'):
+        case('G'):
+        case('B'):
+        case('Y'):
+            return 8;          
+        default:
+            printf("y-1 = %c\n",game->grid[game->pacman_x][game->pacman_y - 1]);
+            game->grid[game->pacman_x][game->pacman_y] = '.';
+            game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
+            game->pacman_x ++;
+            break;
         }
-        else game->move_count --;
         break;
     case 3:
-        if(game->grid[game->pacman_x][game->pacman_y + 1] != 'X')
+        fprintf(stderr,"RIGHT  ");
+        colision = game->grid[game->pacman_x][game->pacman_y + 1];
+        switch(colision)
         {
+        case ('X'):
+            game->move_count --;
+            break;
+        case('1'):
+        case('2'):
+        case('3'):
+        case('4'):
+        case('5'):
+        case('6'):
+            printf("y+1 = %c\n",game->grid[game->pacman_x][game->pacman_y + 1]);
             game->grid[game->pacman_x][game->pacman_y] = '.';
-            game->grid[game->pacman_x][game->pacman_y + 1] = 'P';
-            game->pacman_y ++;
+            game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
+            game->pacman_x ++;
+            return atoi(&colision);
+        case('R'):
+        case('G'):
+        case('B'):
+        case('Y'):
+            return 8;          
+        default:
+            printf("y+1 = %c\n",game->grid[game->pacman_x][game->pacman_y + 1]);
+            game->grid[game->pacman_x][game->pacman_y] = '.';
+            game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
+            game->pacman_x ++;
+            break;
         }
-        else game->move_count --;
         break;
-    default:
-        printf("Wrong arguments");
-        return -1;
     }
     return 0;
 }

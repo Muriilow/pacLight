@@ -49,14 +49,14 @@ uint8_t *serialize_message(struct message *msg, size_t *final_size);
 void next_sequence();
 void send_ack(int fd, uint32_t ifindex, uint8_t seq);
 void send_nack(int fd, uint32_t ifindex, uint8_t seq);
-void send_map(int fd, uint32_t ifindex, uint8_t seq, GameState *game);
-void send_up(int fd, uint32_t ifindex, uint8_t seq);
-void send_down(int fd, uint32_t ifindex, uint8_t seq);
-void send_left(int fd, uint32_t ifindex, uint8_t seq);
-void send_right(int fd, uint32_t ifindex, uint8_t seq);
-void send_jpg(int fd, uint32_t ifindex, uint8_t seq, char* name);
+void send_map(int fd, uint32_t ifindex, GameState *game);
+void send_up(int fd, uint32_t ifindex);
+void send_down(int fd, uint32_t ifindex);
+void send_left(int fd, uint32_t ifindex);
+void send_right(int fd, uint32_t ifindex);
+void send_big(int fd, uint32_t ifindex, char* name, uint32_t type);
 uint8_t crc8_bitwise(const uint8_t *data, size_t size);
 int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq);
-void waitJPG(int fd, uint32_t ifindex);
+void wait_big(int fd, uint32_t ifindex);
 
 #endif

@@ -54,8 +54,11 @@ int main(int argc, char *argv[])
         {
             //Espera o Mapa (Sequence atual)
             result = -1;
-            {
-            printf("waiting map\n");
+            while (result != TYPE_VISUAL){
+                if(result == TYPE_JPG || result == TYPE_TXT || result == TYPE_MP4){
+                    wait_big(file_desc, ifindex);
+                }
+                printf("waiting map\n");
                 raw_type = listener_mode(file_desc, &msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
             }
@@ -79,7 +82,7 @@ int main(int argc, char *argv[])
                     //Envia Comando (TYPE_UP) e espera a nova visualização
                         while (result != TYPE_VISUAL) 
                         {
-                            send_up(file_desc, ifindex, global_sequence.value);
+                            send_up(file_desc, ifindex);
                             printf("waiting map\n");
                             raw_type = listener_mode(file_desc, &msg);
                             result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
@@ -88,7 +91,7 @@ int main(int argc, char *argv[])
                     case MOVE_DOWN:
                         while (result != TYPE_VISUAL) 
                         {
-                            send_down(file_desc, ifindex, global_sequence.value);
+                            send_down(file_desc, ifindex);
                             printf("waiting map\n");
                             raw_type = listener_mode(file_desc, &msg);
                             result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
@@ -97,7 +100,7 @@ int main(int argc, char *argv[])
                     case MOVE_LEFT:
                         while (result != TYPE_VISUAL)
                         {
-                            send_left(file_desc, ifindex, global_sequence.value);
+                            send_left(file_desc, ifindex);
                             printf("waiting map\n");
                             raw_type = listener_mode(file_desc, &msg);
                             result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
@@ -106,24 +109,11 @@ int main(int argc, char *argv[])
                     case MOVE_RIGHT:
                         while (result != TYPE_VISUAL) 
                         {
-                            send_right(file_desc, ifindex, global_sequence.value);
+                            send_right(file_desc, ifindex);
                             printf("waiting map\n");
                             raw_type = listener_mode(file_desc, &msg);
                             result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
                         }
-                        break;
-                    case ASK_JPG:
-                        fprintf(stderr, "asking IMAGE\n");
-                        struct message *msg = create_message(0, TYPE_ASK, global_sequence.value, NULL);
-                        size_t final_size;
-                        uint8_t *buffer = serialize_message(msg, &final_size);
-                        if (buffer) {
-                            printf("ASK ");
-                            send_message(file_desc, ifindex, buffer, &final_size);
-                            free(buffer);
-                        }
-                        free(msg);
-                        waitJPG(file_desc, ifindex);
                         break;
                     default:
                         printf("Comando invalido!\nOpcoes:\n 'w' - 'a' - 's' - 'd' - 'k'\n");
@@ -154,12 +144,13 @@ int main(int argc, char *argv[])
 
         while(1)
         {   
+            fprintf(stderr, "moved: %d\n", moved);
             if (moved){
                 //Envia o mapa e espera o ACK correspondente
                 while(result != TYPE_ACK)
                 {
-
-                    send_map(file_desc, ifindex, global_sequence.value, &game);
+                    fprintf(stderr,"result: %d  ", result);
+                    send_map(file_desc, ifindex,  &game);
                     printf("waiting ack\n");
                     raw_type = listener_mode(file_desc, &received_msg);
                     result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
@@ -190,33 +181,66 @@ int main(int argc, char *argv[])
 
             //Aqui trataremos a logica do jogo (Sequencia ja avancou no final do handle_listen_result)
             printf("Comando %d recebido!\n", result);
+            int status;
+            char name[2];
             switch (result)
             {
                 case TYPE_UP:
-                    handle_move(&game, 0);
+                    status = handle_move(&game, 0);
+                    snprintf(name, sizeof(name), "%d", status);
+                    if(status == 1 || status == 2){
+                        send_big(file_desc, ifindex,  name, TYPE_TXT);
+                    } else if(status == 3 || status == 4){
+                        send_big(file_desc, ifindex,  name, TYPE_JPG);
+                    } else if(status == 5 || status == 6){
+                        send_big(file_desc, ifindex,  name, TYPE_MP4);
+                    }
                     update_map(&game);
                     server_print_map(&game);
                     break;
-                case TYPE_DOWN:
-                    handle_move(&game, 1);
-                    update_map(&game);
-                    server_print_map(&game);
-                    break;
-                case TYPE_LEFT:
-                    handle_move(&game, 2);
-                    update_map(&game);
-                    server_print_map(&game);
-                    break;
-                case TYPE_RIGHT:
-                    handle_move(&game, 3);
-                    update_map(&game);
-                    server_print_map(&game);
-                    break;
-                case TYPE_ASK:
-                    fprintf(stderr, "SENDING IMAGE seq: %d\n",global_sequence.value);
-                    send_jpg(file_desc, ifindex, global_sequence.value, "turtle");
 
+                case TYPE_DOWN:
+                    status = handle_move(&game, 1);
+                    snprintf(name, sizeof(name), "%d", status);
+                    if(status == 1 || status == 2){
+                        send_big(file_desc, ifindex,  name, TYPE_TXT);
+                    } else if(status == 3 || status == 4){
+                        send_big(file_desc, ifindex,  name, TYPE_JPG);
+                    } else if(status == 5 || status == 6){
+                        send_big(file_desc, ifindex,  name, TYPE_MP4);
+                    }
+                    update_map(&game);
+                    server_print_map(&game);
                     break;
+
+                case TYPE_LEFT:
+                    status = handle_move(&game, 2);
+                    snprintf(name, sizeof(name), "%d", status);
+                    if(status == 1 || status == 2){
+                        send_big(file_desc, ifindex,  name, TYPE_TXT);
+                    } else if(status == 3 || status == 4){
+                        send_big(file_desc, ifindex,  name, TYPE_JPG);
+                    } else if(status == 5 || status == 6){
+                        send_big(file_desc, ifindex,  name, TYPE_MP4);
+                    }
+                    update_map(&game);
+                    server_print_map(&game);
+                    break;
+
+                case TYPE_RIGHT:
+                    status = handle_move(&game, 3);
+                    snprintf(name, sizeof(name), "%d", status);
+                    if(status == 1 || status == 2){
+                        send_big(file_desc, ifindex, name, TYPE_TXT);
+                    } else if(status == 3 || status == 4){
+                        send_big(file_desc, ifindex,  name, TYPE_JPG);
+                    } else if(status == 5 || status == 6){
+                        send_big(file_desc, ifindex,  name, TYPE_MP4);
+                    }
+                    update_map(&game);
+                    server_print_map(&game);
+                    break;
+
                 default:
                     break;
             }

@@ -120,7 +120,6 @@ int listener_mode(int32_t fd, struct message *received_msg) {
             } else if (received_msg != NULL) {
                 received_msg->data = NULL;
             }
-             
             return (int)type; 
         }
     }
