@@ -102,7 +102,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     char *visible_grid = malloc((size_t)num_cells);
     if (!visible_grid) return;
 
-    int x_axis = game->pacman_x; //é visão tá andando no eixo errado trocar x e y nessa linha e na de baixo resolveu e não rodou a visão
+    int x_axis = game->pacman_x;
     int y_axis = game->pacman_y;
     int k = 0;
 
@@ -122,20 +122,38 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     }
 
     uint32_t total_size = (uint32_t)k;
-
-    struct message *msg;
-    uint8_t *buffer;
-    char * visible_grid_seg;
+    
     int result = -1;
     int raw_type;
     struct message ack_addr;
-    size_t final_size;
     uint32_t i;
+    
+    struct message *msg = create_message(sizeof(game->visibility_radius), TYPE_VISUAL, global_sequence.value, &game->visibility_radius);
+    size_t final_size;
+    uint8_t *buffer = serialize_message(msg, &final_size);
+
+    fprintf(stderr,"seq: %d expcSeq: %d\n", global_sequence.value, global_sequence.value);
+    while(result != TYPE_ACK)
+    {   
+        fprintf(stderr,"enviando mapa %d\n",msg->type);
+        send_message(fd, ifindex, buffer, &final_size);
+        raw_type = listener_mode(fd, &ack_addr);
+        result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+
+        if(ack_addr.data)
+            continue;
+
+        free(ack_addr.data);
+        ack_addr.data = NULL;
+    }
+    if (buffer)
+        free(buffer);
+    free(msg);
+    fprintf(stderr,"entrando for totaldata: %d\n",total_size);
     for(i = 0; i < total_size - total_size%MAX_DATA; i+=MAX_DATA){
-        fprintf(stderr,"Tamanho total: %d tamanho atual: %d\n", total_size, i);
-        char * visible_grid_seg[MAX_DATA];
+        char visible_grid_seg[MAX_DATA];
         memcpy(visible_grid_seg, &visible_grid[i], MAX_DATA);
-        msg = create_message(MAX_DATA, TYPE_VISUAL, global_sequence.value, visible_grid_seg);
+        msg = create_message(MAX_DATA, TYPE_DATA, global_sequence.value, visible_grid_seg);
         buffer = serialize_message(msg, &final_size);
 
         while(result != TYPE_ACK){
@@ -151,12 +169,16 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         free(msg);
         free(visible_grid);
     }
-        visible_grid_seg = visible_grid + i;
-        msg = create_message(total_size%MAX_DATA, TYPE_VISUAL, global_sequence.value, visible_grid_seg);
+    if (total_size%MAX_DATA > 0){
+        char last_grid_seg[total_size%MAX_DATA];
+        memcpy(last_grid_seg, &visible_grid[i], total_size%MAX_DATA);
+        msg = create_message(total_size%MAX_DATA, TYPE_DATA, global_sequence.value, last_grid_seg);
         buffer = serialize_message(msg, &final_size);
-        fprintf(stderr,"Tamanho total: %d tamanho atual: %d\n", total_size,i);
+        result = -1;
         while(result != TYPE_ACK){
-            printf("MAP ");
+            fprintf(stderr, "SIZE: %d ",total_size%MAX_DATA);
+            fprintf(stderr, "INFO: %.*s\n",total_size%MAX_DATA,last_grid_seg);
+            printf("SENT LAST DATA\n");
             send_message(fd, ifindex, buffer, &final_size);
             raw_type = listener_mode(fd, &ack_addr);
             result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
@@ -165,8 +187,30 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         if (buffer) {
             free(buffer);
         }
+    
         free(msg);
         free(visible_grid);
+    }
+    msg = create_message(total_size%MAX_DATA, TYPE_END, global_sequence.value, NULL);
+    buffer = serialize_message(msg, &final_size);
+
+    result = -1;
+    while(result != TYPE_ACK)
+    {   
+        printf("SEND END ");
+        send_message(fd, ifindex, buffer, &final_size);
+        raw_type = listener_mode(fd, &ack_addr);
+        result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+
+        if(result == TYPE_ACK){
+            fprintf(stderr, "ACK RECEBIDO\n");
+        }
+        if(ack_addr.data)
+            continue;
+
+        free(ack_addr.data);
+        ack_addr.data = NULL;
+    }
 }
 
 void send_up(int fd, uint32_t ifindex)
@@ -383,6 +427,7 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
             fprintf(stderr, "ERRO DE SEQUENCIA - Recebido:%d Esperado:%d\n",received_msg->sequence, expected_seq);
             send_ack(fd, ifindex, received_msg->sequence);
         }else{
+            fprintf(stderr, "ERRO DE SEQUENCIA - Recebido:%d Esperado:%d\n",received_msg->sequence, expected_seq);
             send_nack(fd, ifindex, expected_seq);
         } 
         return LISTEN_SEQ_ERROR;
@@ -413,7 +458,7 @@ void wait_big(int fd, uint32_t ifindex){
     struct message received_msg;
     int result = -1;
     int raw_type;
-    while(result != TYPE_TXT || result != TYPE_JPG || result != TYPE_MP4 ){
+    while(result != TYPE_TXT && result != TYPE_JPG && result != TYPE_MP4 ){
         raw_type = listener_mode(fd, &received_msg);
         result = handle_listen_result(fd, ifindex, raw_type, &received_msg, global_sequence.value);
     }
@@ -439,4 +484,29 @@ void wait_big(int fd, uint32_t ifindex){
             fwrite(received_msg.data, 1, received_msg.size, new_file);
     }
     fclose(new_file);
+}
+char* wait_map(int fd, uint32_t ifindex){
+    struct message received_msg;
+    int result = -1;
+    int raw_type;
+
+    uint32_t size = 0;
+    char* map_view = malloc(sizeof(char));
+    result = -1;
+    //não ta finalizando(devo ter esquecido alguma lógica na finalização)
+    fprintf(stderr, "inside wainting map \n");
+    while(result != TYPE_END){
+        raw_type = listener_mode(fd, &received_msg);
+        result = handle_listen_result(fd, ifindex, raw_type, &received_msg, global_sequence.value);
+        fprintf(stderr,"result in wait: %d\n", result);
+        if(result == TYPE_DATA){
+            fprintf(stderr, "Recieved DATA\n");
+            size += received_msg.size;
+            fprintf(stderr, "REALLOC map size:%d\n", size);
+            map_view = realloc(map_view, size*sizeof(char));
+            memcpy(map_view, received_msg.data, received_msg.size);
+        }
+    }
+    fprintf(stderr,"recieved END\n");
+    return map_view;
 }
