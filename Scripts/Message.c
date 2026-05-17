@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
+//ir para a linah 132
 struct global_sequence global_sequence = {0};
 
 struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void* data) {
@@ -47,7 +48,6 @@ char* name_handle(char* name, int type){
 
 void next_sequence() {
     global_sequence.value = (uint8_t)((global_sequence.value + 1) & 0x3F);
-    printf("NEXT SEQUENCE: %d\n", global_sequence.value);
 }
 
 uint8_t *serialize_message(struct message *msg, size_t *final_size) {
@@ -127,15 +127,14 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     int raw_type;
     struct message ack_addr;
     uint32_t i;
-    
-    struct message *msg = create_message(sizeof(game->visibility_radius), TYPE_VISUAL, global_sequence.value, &game->visibility_radius);
+    int vision = game->visibility_radius;
+    struct message *msg = create_message(sizeof(vision), TYPE_VISUAL, global_sequence.value, &vision);
     size_t final_size;
     uint8_t *buffer = serialize_message(msg, &final_size);
 
-    fprintf(stderr,"seq: %d expcSeq: %d\n", global_sequence.value, global_sequence.value);
     while(result != TYPE_ACK)
     {   
-        fprintf(stderr,"enviando mapa %d\n",msg->type);
+        printf("VIS ");
         send_message(fd, ifindex, buffer, &final_size);
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
@@ -148,8 +147,6 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     }
     if (buffer)
         free(buffer);
-    free(msg);
-    fprintf(stderr,"entrando for totaldata: %d\n",total_size);
     for(i = 0; i < total_size - total_size%MAX_DATA; i+=MAX_DATA){
         char visible_grid_seg[MAX_DATA];
         memcpy(visible_grid_seg, &visible_grid[i], MAX_DATA);
@@ -176,9 +173,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         buffer = serialize_message(msg, &final_size);
         result = -1;
         while(result != TYPE_ACK){
-            fprintf(stderr, "SIZE: %d ",total_size%MAX_DATA);
-            fprintf(stderr, "INFO: %.*s\n",total_size%MAX_DATA,last_grid_seg);
-            printf("SENT LAST DATA\n");
+            printf("LAST MAP ");
             send_message(fd, ifindex, buffer, &final_size);
             raw_type = listener_mode(fd, &ack_addr);
             result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
@@ -197,20 +192,18 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     result = -1;
     while(result != TYPE_ACK)
     {   
-        printf("SEND END ");
+        printf("END ");
         send_message(fd, ifindex, buffer, &final_size);
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
 
-        if(result == TYPE_ACK){
-            fprintf(stderr, "ACK RECEBIDO\n");
-        }
         if(ack_addr.data)
             continue;
 
         free(ack_addr.data);
         ack_addr.data = NULL;
     }
+    fprintf(stderr, "ACK RECEBIDO\n");
 }
 
 void send_up(int fd, uint32_t ifindex)
@@ -284,7 +277,6 @@ void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
     size_t final_size;
     uint8_t *buffer = serialize_message(msg, &final_size);
 
-    fprintf(stderr,"seq: %d expcSeq: %d\n", global_sequence.value, global_sequence.value);
     while(result != TYPE_ACK)
     {   
         send_message(fd, ifindex, buffer, &final_size);
@@ -416,9 +408,7 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
         }
         return LISTEN_SEQ_ERROR;
     }
-    if (listen_return >= 10 && listen_return <= 13){
-        return listen_return;
-    }
+
     // Para pacotes de dados/comandos
     if (received_msg->sequence != expected_seq)
     {

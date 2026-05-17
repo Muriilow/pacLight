@@ -60,6 +60,7 @@ int main(int argc, char *argv[])
             result = -1;
 
             while (result != TYPE_VISUAL){
+                fprintf(stderr,"PLAYER GLOBAL SEQ:%d\n", global_sequence.value);
                 raw_type = listener_mode(file_desc, &received_msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
                 fprintf(stderr, "resultado: %d\n",result);
@@ -68,12 +69,14 @@ int main(int argc, char *argv[])
                 }
                 fprintf(stderr,"esperando visual type\n");
             }
-            fprintf(stderr, "visual recieved\n");
-            memcpy(&radius, received_msg.data, sizeof(int));
+            fprintf(stderr, "visual recieved  ");
+            //fprintf(stderr, "raio: %d\n" ,(int)received_msg.data);
+            memcpy(radius, received_msg.data, sizeof(int));
+            //fprintf(stderr,"raio: %d", radius);
+            fprintf(stderr,"esperando mapa\n");
             map_view = wait_map(file_desc,ifindex);
             printf("Mapa recebido!\n");
-            fprintf(stderr, "INFO: %c\n",map_view[1]);
-            print_game_screen(map_view, 1);
+            print_game_screen(map_view, *radius);
 
             if (msg.data)
             {
@@ -130,8 +133,7 @@ int main(int argc, char *argv[])
                         printf("Comando: ");
                         continue;
                 }                
-                fprintf(stderr, "while scan\n");
-                break;
+                break; // impede de ficar em loop esperando input
             }
         }
     }
@@ -158,13 +160,14 @@ int main(int argc, char *argv[])
             loop_count++;
             fprintf(stderr, "moved: %d\n", moved);
             if (moved){
+                fprintf(stderr,"SERVER GLOBAL SEQ:%d\n", global_sequence.value);
                 //Envia o mapa e espera o ACK correspondente
                     send_map(file_desc, ifindex, &game);
                 }
-                fprintf(stderr,"ACK RECEBIDO\n");
                 moved = 0;
             //Esperando comando do player (ja com a nova sequencia)
             result = -1;
+            fprintf(stderr,"GLOBAL SEQ BEFORE MOVE: %d\n",global_sequence.value);
             while(result < 10 || result > 13){
                 printf("waiting input\n");
                 raw_type = listener_mode(file_desc, &received_msg);
@@ -178,7 +181,8 @@ int main(int argc, char *argv[])
             }
                 moved = 1;
 
-            send_ack(file_desc,ifindex,global_sequence.value);
+
+            fprintf(stderr,"GLOBAL SEQ AFTER MOVE: %d\n",global_sequence.value);
             //Aqui trataremos a logica do jogo (Sequencia ja avancou no final do handle_listen_result)
             printf("Comando %d recebido!\n", result);
             int status;

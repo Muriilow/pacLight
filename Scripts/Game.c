@@ -64,7 +64,7 @@ void get_visible_map(GameState *game, char *buffer, int *size) {
 }
 
 void print_game_screen(const char *visible_grid, int radius) {
-    //printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
+    printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
     printf("PacLight - Pílulas: ?/6 | Visão: %d\n\n", radius);
     int k = 0;
     // Itera no bounding box, mas desenha apenas o que está no raio de Manhattan
@@ -94,7 +94,7 @@ int handle_move(GameState *game, uint16_t direction)
     switch (direction)
     {
     case 0:
-        fprintf(stderr,"UP  ");
+        //fprintf(stderr,"UP  ");
         char colision = game->grid[game->pacman_x - 1][game->pacman_y];
         switch(colision){
             case ('X'):
@@ -106,7 +106,6 @@ int handle_move(GameState *game, uint16_t direction)
             case('4'):
             case('5'):
             case('6'):
-                printf("x-1 = %c\n",game->grid[game->pacman_x - 1][game->pacman_y]);
                 game->grid[game->pacman_x][game->pacman_y] = '.';
                 game->grid[game->pacman_x - 1][game->pacman_y] = 'P';
                 game->pacman_x --;
@@ -117,7 +116,6 @@ int handle_move(GameState *game, uint16_t direction)
             case('Y'):
                 return 8;          
             default:
-                printf("x-1 = %c\n",game->grid[game->pacman_x - 1][game->pacman_y]);
                 game->grid[game->pacman_x][game->pacman_y] = '.';
                 game->grid[game->pacman_x - 1][game->pacman_y] = 'P';
                 game->pacman_x --;
@@ -125,7 +123,7 @@ int handle_move(GameState *game, uint16_t direction)
         }
         break;
     case 1:
-        fprintf(stderr,"DOWN  ");
+        //fprintf(stderr,"DOWN  ");
         colision = game->grid[game->pacman_x + 1][game->pacman_y];
         switch(colision)
         {
@@ -138,7 +136,6 @@ int handle_move(GameState *game, uint16_t direction)
         case('4'):
         case('5'):
         case('6'):
-            printf("x+1 = %c\n",game->grid[game->pacman_x + 1][game->pacman_y]);
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[game->pacman_x + 1][game->pacman_y] = 'P';
             game->pacman_x ++;
@@ -149,7 +146,6 @@ int handle_move(GameState *game, uint16_t direction)
         case('Y'):
             return 8;          
         default:
-            printf("x+1 = %c\n",game->grid[game->pacman_x + 1][game->pacman_y]);
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[game->pacman_x + 1][game->pacman_y] = 'P';
             game->pacman_x ++;
@@ -170,10 +166,9 @@ int handle_move(GameState *game, uint16_t direction)
         case('4'):
         case('5'):
         case('6'):
-            printf("y-1 = %c\n",game->grid[game->pacman_x][game->pacman_y - 1]);
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
-            game->pacman_x ++;
+            game->pacman_y --;
             return atoi(&colision);
         case('R'):
         case('G'):
@@ -181,10 +176,9 @@ int handle_move(GameState *game, uint16_t direction)
         case('Y'):
             return 8;          
         default:
-            printf("y-1 = %c\n",game->grid[game->pacman_x][game->pacman_y - 1]);
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
-            game->pacman_x ++;
+            game->pacman_y --;
             break;
         }
         break;
@@ -202,10 +196,9 @@ int handle_move(GameState *game, uint16_t direction)
         case('4'):
         case('5'):
         case('6'):
-            printf("y+1 = %c\n",game->grid[game->pacman_x][game->pacman_y + 1]);
             game->grid[game->pacman_x][game->pacman_y] = '.';
-            game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
-            game->pacman_x ++;
+            game->grid[game->pacman_x][game->pacman_y + 1] = 'P';
+            game->pacman_y ++;
             return atoi(&colision);
         case('R'):
         case('G'):
@@ -215,12 +208,13 @@ int handle_move(GameState *game, uint16_t direction)
         default:
             printf("y+1 = %c\n",game->grid[game->pacman_x][game->pacman_y + 1]);
             game->grid[game->pacman_x][game->pacman_y] = '.';
-            game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
-            game->pacman_x ++;
+            game->grid[game->pacman_x][game->pacman_y + 1] = 'P';
+            game->pacman_y ++;
             break;
         }
         break;
     }
+    game->visibility_radius = INITIAL_VISIBILITY+game->move_count/5;
     return 0;
 }
 void update_map(GameState *game)
@@ -230,6 +224,7 @@ void update_map(GameState *game)
 }
 
 void server_print_map(GameState *game){
+    printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
     // Itera no bounding box, mas desenha apenas o que está no raio de Manhattan
     for (int i = 0; i < MAP_SIZE; i++) {
         for (int j = 0; j < MAP_SIZE; j++) {
