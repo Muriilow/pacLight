@@ -57,7 +57,7 @@ void send_right(int fd, uint32_t ifindex);
 void send_big(int fd, uint32_t ifindex, char* name, uint32_t type);
 uint8_t crc8_bitwise(const uint8_t *data, size_t size);
 int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq);
-void wait_big(int fd, uint32_t ifindex);
+void wait_big(int fd, uint32_t ifindex, int type, char* name);
 char* wait_map(int fd, uint32_t ifindex);
 
 #endif

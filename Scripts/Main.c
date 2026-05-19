@@ -60,12 +60,13 @@ int main(int argc, char *argv[])
             result = -1;
 
             while (result != TYPE_VISUAL){
-                fprintf(stderr,"PLAYER GLOBAL SEQ:%d\n", global_sequence.value);
+                fprintf(stderr,"waiting visual");
                 raw_type = listener_mode(file_desc, &received_msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
                 fprintf(stderr, "resultado: %d\n",result);
                 if(result == TYPE_JPG || result == TYPE_TXT || result == TYPE_MP4){
-                    wait_big(file_desc, ifindex);
+                    
+                    wait_big(file_desc, ifindex, result, (char*)received_msg.data);
                 }
                 fprintf(stderr,"esperando visual type\n");
             }

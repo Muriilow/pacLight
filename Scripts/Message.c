@@ -147,12 +147,15 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     }
     if (buffer)
         free(buffer);
+    fprintf(stderr,"total size: %d\n", total_size);
     for(i = 0; i < total_size - total_size%MAX_DATA; i+=MAX_DATA){
+        fprintf(stderr,"i: %d \n", i);
         char visible_grid_seg[MAX_DATA];
         memcpy(visible_grid_seg, &visible_grid[i], MAX_DATA);
         msg = create_message(MAX_DATA, TYPE_DATA, global_sequence.value, visible_grid_seg);
         buffer = serialize_message(msg, &final_size);
 
+        result = -1;
         while(result != TYPE_ACK){
             printf("MAP ");
             send_message(fd, ifindex, buffer, &final_size);
@@ -164,7 +167,6 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
             free(buffer);
         }
         free(msg);
-        free(visible_grid);
     }
     if (total_size%MAX_DATA > 0){
         char last_grid_seg[total_size%MAX_DATA];
@@ -184,8 +186,9 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         }
     
         free(msg);
-        free(visible_grid);
     }
+
+    free(visible_grid);
     msg = create_message(total_size%MAX_DATA, TYPE_END, global_sequence.value, NULL);
     buffer = serialize_message(msg, &final_size);
 
@@ -444,27 +447,22 @@ uint8_t crc8_bitwise(const uint8_t *data, size_t size) {
     return crc;
 }
 
-void wait_big(int fd, uint32_t ifindex){
+void wait_big(int fd, uint32_t ifindex, int type, char* fileName){
+    fprintf(stderr,"Waiting file\n");
     struct message received_msg;
     int result = -1;
     int raw_type;
-    while(result != TYPE_TXT && result != TYPE_JPG && result != TYPE_MP4 ){
-        raw_type = listener_mode(fd, &received_msg);
-        result = handle_listen_result(fd, ifindex, raw_type, &received_msg, global_sequence.value);
-    }
     char name[42] = "Receive/"; //(tamanho de "Receive/")8  + 32 + 1 para termindaor nulo
     
-    char* data_ptr = (char*)received_msg.data;
-    
-    if (result == TYPE_TXT)
-        snprintf(name, sizeof(name), "Receive/%s.txt", data_ptr);
-    else if (result == TYPE_JPG)
-        snprintf(name, sizeof(name), "Receive/%s.jpg", data_ptr);
-    else if (result == TYPE_MP4)
-        snprintf(name, sizeof(name), "Receive/%s.mp4", data_ptr);
+    if (type == TYPE_TXT)
+        snprintf(name, sizeof(name), "Receive/%s.txt", fileName);
+    else if (type == TYPE_JPG)
+        snprintf(name, sizeof(name), "Receive/%s.jpg", fileName);
+    else if (type == TYPE_MP4)
+        snprintf(name, sizeof(name), "Receive/%s.mp4", fileName);
 
+    fprintf(stderr,"%s\n",name);
     FILE* new_file = fopen(name, "wb");
-    result = -1;
     //não ta finalizando(devo ter esquecido alguma lógica na finalização)
     while(result != TYPE_END){
         raw_type = listener_mode(fd, &received_msg);
@@ -494,7 +492,7 @@ char* wait_map(int fd, uint32_t ifindex){
             size += received_msg.size;
             fprintf(stderr, "REALLOC map size:%d\n", size);
             map_view = realloc(map_view, size*sizeof(char));
-            memcpy(map_view, received_msg.data, received_msg.size);
+            memcpy(map_view+size-received_msg.size, received_msg.data, received_msg.size);
         }
     }
     fprintf(stderr,"recieved END\n");

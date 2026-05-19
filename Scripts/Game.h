@@ -5,7 +5,7 @@
 
 #define MAP_SIZE 40
 #define INITIAL_VISIBILITY 1
-#define VISIBILITY_INCREMENT_INTERVAL 5
+#define VISIBILITY_INCREMENT_INTERVAL 5 
 
 typedef struct {
     char grid[MAP_SIZE][MAP_SIZE];
@@ -16,7 +16,7 @@ typedef struct {
 } GameState;
 
 void init_game(GameState *game);
-int load_map_from_csv(GameState *game, const char *filename);
+int load_map_from_csv(GameState *game, const char *filename);   
 void update_visibility(GameState *game);
 void get_visible_map(GameState *game, char *buffer, int *size);
 void print_game_screen(const char *visible_grid, int radius);

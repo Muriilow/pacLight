@@ -64,7 +64,7 @@ void get_visible_map(GameState *game, char *buffer, int *size) {
 }
 
 void print_game_screen(const char *visible_grid, int radius) {
-    printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
+    //printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
     printf("PacLight - Pílulas: ?/6 | Visão: %d\n\n", radius);
     int k = 0;
     // Itera no bounding box, mas desenha apenas o que está no raio de Manhattan
@@ -75,9 +75,13 @@ void print_game_screen(const char *visible_grid, int radius) {
                 switch (cell) {
                     case 'P': printf("\033[1;33mP \033[0m"); break; // Amarelo (2 chars)
                     case 'X': printf("\033[1;34m# \033[0m"); break; // Azul (2 chars)
+                    case 'R': printf("\033[1;91mR \033[0m"); break; // Vermelho brilhante(2 chars)
+                    case 'G': printf("\033[1;92mG \033[0m"); break; // Verde brilhante (2 chars)
+                    case 'B': printf("\033[1;94mB \033[0m"); break; // Azul brilhante(2 chars)
+                    case 'Y': printf("\033[1;93mY \033[0m"); break; // Amarelo brilhante (2 chars)
                     case '0': printf(". "); break;                  // Ponto (2 chars)
                     case '1': case '2': case '3': 
-                    case '4': case '5': case '6': printf("\033[1;32m. \033[0m"); break; // Verde (2 chars)
+                    case '4': case '5': case '6': printf("\033[1;32m%c \033[0m", cell); break; 
                     default: printf("%c ", cell); break;
                 }
             } else {
@@ -109,7 +113,7 @@ int handle_move(GameState *game, uint16_t direction)
                 game->grid[game->pacman_x][game->pacman_y] = '.';
                 game->grid[game->pacman_x - 1][game->pacman_y] = 'P';
                 game->pacman_x --;
-                return atoi(&colision);
+                return (colision - '0');
             case('R'):
             case('G'):
             case('B'):
@@ -139,7 +143,7 @@ int handle_move(GameState *game, uint16_t direction)
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[game->pacman_x + 1][game->pacman_y] = 'P';
             game->pacman_x ++;
-            return atoi(&colision);
+            return (colision - '0');
         case('R'):
         case('G'):
         case('B'):
@@ -169,7 +173,7 @@ int handle_move(GameState *game, uint16_t direction)
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
             game->pacman_y --;
-            return atoi(&colision);
+            return (colision - '0');
         case('R'):
         case('G'):
         case('B'):
@@ -199,7 +203,7 @@ int handle_move(GameState *game, uint16_t direction)
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[game->pacman_x][game->pacman_y + 1] = 'P';
             game->pacman_y ++;
-            return atoi(&colision);
+            return (colision - '0');
         case('R'):
         case('G'):
         case('B'):
@@ -214,7 +218,7 @@ int handle_move(GameState *game, uint16_t direction)
         }
         break;
     }
-    game->visibility_radius = INITIAL_VISIBILITY+game->move_count/5;
+    game->visibility_radius = INITIAL_VISIBILITY+game->move_count/VISIBILITY_INCREMENT_INTERVAL;
     return 0;
 }
 void update_map(GameState *game)
@@ -224,17 +228,21 @@ void update_map(GameState *game)
 }
 
 void server_print_map(GameState *game){
-    printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
+    //printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
     // Itera no bounding box, mas desenha apenas o que está no raio de Manhattan
     for (int i = 0; i < MAP_SIZE; i++) {
         for (int j = 0; j < MAP_SIZE; j++) {
             char cell = game->grid[i][j];
             switch (cell) {
                 case 'P': printf("\033[1;33mP \033[0m"); break; // Amarelo (2 chars)
-                case 'X': printf("\033[1;34m# \033[0m"); break; // Azul (2 chars)
-                case '0': printf(". "); break;                  // Ponto (2 chars)
+                    case 'X': printf("\033[1;34m# \033[0m"); break; // Azul (2 chars)
+                    case 'R': printf("\033[1;91mR \033[0m"); break; // Vermelho brilhante(2 chars)
+                    case 'G': printf("\033[1;92mG \033[0m"); break; // Verde brilhante (2 chars)
+                    case 'B': printf("\033[1;94mB \033[0m"); break; // Azul brilhante(2 chars)
+                    case 'Y': printf("\033[1;93mY \033[0m"); break; // Amarelo brilhante (2 chars)
+                    case '0': printf(". "); break;                  // Ponto (2 chars)                  // Ponto (2 chars)
                 case '1': case '2': case '3': 
-                case '4': case '5': case '6': printf("\033[1;32m. \033[0m"); break; // Verde (2 chars)
+                case '4': case '5': case '6': printf("\033[1;32m%c \033[0m", cell); break; // Verde (2 chars)
                 default: printf("%c ", cell); break;
             }
         }
