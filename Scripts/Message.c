@@ -472,6 +472,9 @@ void wait_big(int fd, uint32_t ifindex, int type, char* fileName){
             fwrite(received_msg.data, 1, received_msg.size, new_file);
     }
     fclose(new_file);
+    //char* open = malloc(sizeof(name)+ 10);
+    //snprintf(open, sizeof(name)+10, "mpv \"%s\"", name);
+    //system(name);
 }
 char* wait_map(int fd, uint32_t ifindex){
     struct message received_msg;

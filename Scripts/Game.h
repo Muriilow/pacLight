@@ -8,6 +8,11 @@
 #define VISIBILITY_INCREMENT_INTERVAL 5 
 
 typedef struct {
+    int direction;
+    int ghost_x, ghost_y;
+} Ghost;
+
+typedef struct {
     char grid[MAP_SIZE][MAP_SIZE];
     int pacman_x, pacman_y;
     int visibility_radius;
