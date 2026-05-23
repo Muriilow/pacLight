@@ -53,7 +53,7 @@ int create_raw_socket(uint32_t ifindex) {
 
     struct timeval tv;
     tv.tv_sec = 2; 
-    tv.tv_usec = 0;
+    tv.tv_usec = (2)*1000;
     status = setsockopt(pac_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     if(status < 0) {
         fprintf(stderr, "Erro ao setar tempo de espera do socket! {create_raw_socket}\n");

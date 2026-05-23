@@ -9,7 +9,7 @@
 
 typedef struct {
     int direction;
-    int ghost_x, ghost_y;
+    int x, y;
 } Ghost;
 
 typedef struct {
@@ -18,6 +18,8 @@ typedef struct {
     int visibility_radius;
     int move_count;
     int pills_collected;
+    int last_green_turn;
+    Ghost red, green, blue, yellow;
 } GameState;
 
 void init_game(GameState *game);
@@ -28,4 +30,5 @@ void print_game_screen(const char *visible_grid, int radius);
 int handle_move(GameState *game, uint16_t direction);
 void update_map(GameState *game);
 void server_print_map(GameState *game);
+void moveghosts(GameState *game);
 #endif

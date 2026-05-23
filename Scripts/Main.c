@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
         printf("Iniciando o jogador! Aguardando mapa inicial...\n");
         struct message msg;
         msg.data = NULL;
-        int result = -1;
+        int result = -4;
         int raw_type;
         char command[20];
         int* radius = malloc(sizeof(int));
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
         while(1)
         {
             //Espera o Mapa (Sequence atual)
-            result = -1;
+            result = -4;
 
             while (result != TYPE_VISUAL){
                 fprintf(stderr,"waiting visual");
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
             printf("Comando: ");
             while (scanf("%19s", command) == 1)
             {   
-                result = -1;
+                result = -4;
                 switch(stringToEnum(command))
                 {
                     case MOVE_UP:
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     {
         struct message received_msg;
         received_msg.data = NULL;
-        int result = -1;
+        int result = -4;
         int raw_type;
         int moved = 1;
 
@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
                 }
                 moved = 0;
             //Esperando comando do player (ja com a nova sequencia)
-            result = -1;
+            result = -4;
             fprintf(stderr,"GLOBAL SEQ BEFORE MOVE: %d\n",global_sequence.value);
             while(result < 10 || result > 13){
                 printf("waiting input\n");

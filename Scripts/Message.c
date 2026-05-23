@@ -7,6 +7,22 @@
 //ir para a linah 132
 struct global_sequence global_sequence = {0};
 
+int prepare_data(char* data, int size, char* updated_data){
+    int amount = 0;
+    updated_data = malloc(2*sizeof(data));
+    int j = 0;
+    for(int i = 0; i < size; i++){
+        if(data[i] == 0x81 || data[i] == 0x88){
+
+            updated_data[j++] = 0xff;
+        } else {
+            updated_data[i] = data[i];
+            j++;
+        }
+    }
+    return amount;
+}
+
 struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void* data) {
     struct message* new_message = malloc(sizeof(struct message));
     if (new_message == NULL) {
@@ -18,6 +34,7 @@ struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void* 
     new_message->size = (uint8_t)(size & 0x1F);
     new_message->sequence = (uint8_t)(seq & 0x3F);
     new_message->type = (uint8_t)(type & 0x1F);
+     
     new_message->data = data;
     new_message->CRC = 1; 
 
@@ -123,7 +140,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
 
     uint32_t total_size = (uint32_t)k;
     
-    int result = -1;
+    int result = -4;
     int raw_type;
     struct message ack_addr;
     uint32_t i;
@@ -155,7 +172,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         msg = create_message(MAX_DATA, TYPE_DATA, global_sequence.value, visible_grid_seg);
         buffer = serialize_message(msg, &final_size);
 
-        result = -1;
+        result = -4;
         while(result != TYPE_ACK){
             printf("MAP ");
             send_message(fd, ifindex, buffer, &final_size);
@@ -173,7 +190,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         memcpy(last_grid_seg, &visible_grid[i], total_size%MAX_DATA);
         msg = create_message(total_size%MAX_DATA, TYPE_DATA, global_sequence.value, last_grid_seg);
         buffer = serialize_message(msg, &final_size);
-        result = -1;
+        result = -4;
         while(result != TYPE_ACK){
             printf("LAST MAP ");
             send_message(fd, ifindex, buffer, &final_size);
@@ -192,7 +209,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     msg = create_message(total_size%MAX_DATA, TYPE_END, global_sequence.value, NULL);
     buffer = serialize_message(msg, &final_size);
 
-    result = -1;
+    result = -4;
     while(result != TYPE_ACK)
     {   
         printf("END ");
@@ -272,7 +289,7 @@ void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
         fprintf(stderr,"Nome muito grande\n");
         return;
     }
-    int result = -1;
+    int result = -4;
     int raw_type;
     struct message ack_addr;
 
@@ -310,7 +327,7 @@ void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
     fseek(fptr, 0, SEEK_SET);
     uint32_t seg_size;
     for(long i = 0; i < size - size%MAX_DATA; i += MAX_DATA){
-        fprintf(stderr,"Tamanho total: %ld tamanho atual: %ld\n",size, i);
+        fprintf(stderr,"envio: %8.5f\n",(float)i/size*100);
         char file_data[MAX_DATA];
         seg_size = (uint32_t) fread(file_data, 1, MAX_DATA, fptr);
         if (seg_size != MAX_DATA){
@@ -321,7 +338,7 @@ void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
 
             msg = create_message(MAX_DATA, TYPE_DATA, global_sequence.value, file_data);
             buffer = serialize_message(msg, &final_size);
-            result = -1;
+            result = -4;
             while(result != TYPE_ACK)
             {
                 printf("DATA %d ", global_sequence.value);
@@ -344,7 +361,7 @@ void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
     fread(file_data, 1, (size_t)size%MAX_DATA, fptr);
     msg = create_message((uint32_t)(size%MAX_DATA), TYPE_DATA, global_sequence.value, file_data);
     buffer = serialize_message(msg, &final_size);
-    result = -1;
+    result = -4;
     while(result != TYPE_ACK)
     {   
         printf("DATA %d ", global_sequence.value);
@@ -365,7 +382,7 @@ void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
     msg = create_message(0, TYPE_END, global_sequence.value, NULL);
     buffer = serialize_message(msg, &final_size);
 
-    result = -1;
+    result = -4;
     while(result != TYPE_ACK)
     {   
         printf("END ");
@@ -450,7 +467,7 @@ uint8_t crc8_bitwise(const uint8_t *data, size_t size) {
 void wait_big(int fd, uint32_t ifindex, int type, char* fileName){
     fprintf(stderr,"Waiting file\n");
     struct message received_msg;
-    int result = -1;
+    int result = -4;
     int raw_type;
     char name[42] = "Receive/"; //(tamanho de "Receive/")8  + 32 + 1 para termindaor nulo
     
@@ -478,12 +495,12 @@ void wait_big(int fd, uint32_t ifindex, int type, char* fileName){
 }
 char* wait_map(int fd, uint32_t ifindex){
     struct message received_msg;
-    int result = -1;
+    int result = -4;
     int raw_type;
 
     uint32_t size = 0;
     char* map_view = malloc(sizeof(char));
-    result = -1;
+    result = -4;
     //não ta finalizando(devo ter esquecido alguma lógica na finalização)
     fprintf(stderr, "inside wainting map \n");
     while(result != TYPE_END){

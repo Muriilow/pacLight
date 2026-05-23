@@ -4,6 +4,11 @@
 #include <string.h>
 #include <time.h>
 
+void init_ghost(Ghost* ghost, int x, int y, int direction){
+    ghost->direction = direction;
+    ghost->x = x;
+    ghost->y = y;
+}
 void init_game(GameState *game) {
     game->pacman_x = 0;
     game->pacman_y = 0;
@@ -11,8 +16,12 @@ void init_game(GameState *game) {
     game->move_count = 0;
     game->pills_collected = 0;
     memset(game->grid, '0', sizeof(game->grid));
-}
-
+    init_ghost(&game->red, 1, 1, rand()%4);
+    init_ghost(&game->green, 1, 38, rand()%4);
+    game->last_green_turn = 1;
+    init_ghost(&game->blue, 38, 1, rand()%4);
+    init_ghost(&game->yellow, 38, 38, rand()%4);
+    }
 int load_map_from_csv(GameState *game, const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
@@ -35,7 +44,10 @@ int load_map_from_csv(GameState *game, const char *filename) {
         }
         row++;
     }
-
+    game->grid[game->red.x][game->red.y] = 'R';
+    game->grid[game->green.x][game->green.y] = 'G';
+    game->grid[game->blue.x][game->blue.y] = 'B';
+    game->grid[game->yellow.x][game->yellow.y] = 'Y';
     fclose(file);
     return 0;
 }
@@ -127,7 +139,6 @@ int handle_move(GameState *game, uint16_t direction)
         }
         break;
     case 1:
-        //fprintf(stderr,"DOWN  ");
         colision = game->grid[game->pacman_x + 1][game->pacman_y];
         switch(colision)
         {
@@ -157,7 +168,6 @@ int handle_move(GameState *game, uint16_t direction)
         }
         break;
     case 2:
-        fprintf(stderr,"LEFT  ");
         colision = game->grid[game->pacman_x][game->pacman_y - 1];
         switch(colision)
         {
@@ -187,7 +197,6 @@ int handle_move(GameState *game, uint16_t direction)
         }
         break;
     case 3:
-        fprintf(stderr,"RIGHT  ");
         colision = game->grid[game->pacman_x][game->pacman_y + 1];
         switch(colision)
         {
@@ -223,10 +232,177 @@ int handle_move(GameState *game, uint16_t direction)
 }
 void update_map(GameState *game)
 {  
+    moveghosts(game);
     game->move_count ++;
     return;
 }
-
+void moveghosts(GameState* game){
+    //0 = up, 1 = right, 2 down, 3 left
+    switch (game->red.direction){
+        case 0:
+            fprintf(stderr,"RED UP \n");
+            if (game->grid[game->red.x-1][game->red.y] == '0'){
+                game->grid[game->red.x-1][game->red.y] = 'R';
+                game->grid[game->red.x][game->red.y] = '0';
+                game->red.x--;
+            } else {
+                game->red.direction = 3;
+            }
+        break;
+        case 1:
+            fprintf(stderr,"RED RIG\n");
+            if (game->grid[game->red.x][game->red.y+1] == '0'){
+                game->grid[game->red.x][game->red.y+1] = 'R';
+                game->grid[game->red.x][game->red.y] = '0';
+                game->red.y++;
+            } else {
+                    game->red.direction--;
+            }
+        break;
+        case 2:
+            fprintf(stderr,"RED DOW\n");
+            if (game->grid[game->red.x+1][game->red.y] == '0'){
+                game->grid[game->red.x+1][game->red.y] = 'R';
+                game->grid[game->red.x][game->red.y] = '0';
+                game->red.x++;
+            } else {
+                    game->red.direction--;
+            }
+        break;
+        case 3:
+            fprintf(stderr,"RED LEF\n");
+            if (game->grid[game->red.x][game->red.y-1] == '0'){
+                game->grid[game->red.x][game->red.y-1] = 'R';
+                game->grid[game->red.x][game->red.y] = '0';
+                game->red.y--;
+            } else {
+                    game->red.direction--;
+            }
+        break;
+    }
+    switch (game->blue.direction){
+        case 0:
+            fprintf(stderr,"BLUE UP \n");
+            if (game->grid[game->blue.x-1][game->blue.y] == '0'){
+                game->grid[game->blue.x-1][game->blue.y] = 'B';
+                game->grid[game->blue.x][game->blue.y] = '0';
+                game->blue.x--;
+            } else {
+                game->blue.direction++;
+            }
+        break;
+        case 1:
+            fprintf(stderr,"BLUE RIG\n");
+            if (game->grid[game->blue.x][game->blue.y+1] == '0'){
+                game->grid[game->blue.x][game->blue.y+1] = 'B';
+                game->grid[game->blue.x][game->blue.y] = '0';
+                game->blue.y++;
+            } else {
+                    game->blue.direction++;
+            }
+        break;
+        case 2:
+            fprintf(stderr,"BLUE DOW\n");
+            if (game->grid[game->blue.x+1][game->blue.y] == '0'){
+                game->grid[game->blue.x+1][game->blue.y] = 'B';
+                game->grid[game->blue.x][game->blue.y] = '0';
+                game->blue.x++;
+            } else {
+                    game->blue.direction++;
+            }
+        break;
+        case 3:
+            fprintf(stderr,"BLUE LEF\n");
+            if (game->grid[game->blue.x][game->blue.y-1] == '0'){
+                game->grid[game->blue.x][game->blue.y-1] = 'B';
+                game->grid[game->blue.x][game->blue.y] = '0';
+                game->blue.y--;
+            } else {
+                    game->blue.direction = 0;
+            }
+        break;
+    }
+    switch (rand()%4){
+        case 0:
+            fprintf(stderr,"YELLOW UP \n");
+            if (game->grid[game->yellow.x-1][game->yellow.y] == '0'){
+                game->grid[game->yellow.x-1][game->yellow.y] = 'Y';
+                game->grid[game->yellow.x][game->yellow.y] = '0';
+                game->yellow.x--;
+            }
+        break;
+        case 1:
+            fprintf(stderr,"YELLOW RIG\n");
+            if (game->grid[game->yellow.x][game->yellow.y+1] == '0'){
+                game->grid[game->yellow.x][game->yellow.y+1] = 'Y';
+                game->grid[game->yellow.x][game->yellow.y] = '0';
+                game->yellow.y++;
+            }
+        break;
+        case 2:
+            fprintf(stderr,"YELLOW DOW\n");
+            if (game->grid[game->yellow.x+1][game->yellow.y] == '0'){
+                game->grid[game->yellow.x+1][game->yellow.y] = 'Y';
+                game->grid[game->yellow.x][game->yellow.y] = '0';
+                game->yellow.x++;
+            }
+        break;
+        case 3:
+            fprintf(stderr,"YELLOW LEF\n");
+            if (game->grid[game->yellow.x][game->yellow.y-1] == '0'){
+                game->grid[game->yellow.x][game->yellow.y-1] = 'Y';
+                game->grid[game->yellow.x][game->yellow.y] = '0';
+                game->yellow.y--;
+            }
+        break;
+    }
+    switch (game->green.direction){
+        case 0:
+            fprintf(stderr,"GREEN UP \n");
+            if (game->grid[game->green.x-1][game->green.y] == '0'){
+                game->grid[game->green.x-1][game->green.y] = 'G';
+                game->grid[game->green.x][game->green.y] = '0';
+                game->green.x--;
+            } else {
+                game->last_green_turn *= -1;
+                game->green.direction += game->last_green_turn;
+            }
+        break;
+        case 1:
+            fprintf(stderr,"GREEN RIG\n");
+            if (game->grid[game->green.x][game->green.y+1] == '0'){
+                game->grid[game->green.x][game->green.y+1] = 'G';
+                game->grid[game->green.x][game->green.y] = '0';
+                game->green.y++;
+            } else {
+                game->last_green_turn *= -1;
+                game->green.direction += game->last_green_turn;
+            }
+        break;
+        case 2:
+            fprintf(stderr,"GREEN DOW\n");
+            if (game->grid[game->green.x+1][game->green.y] == '0'){
+                game->grid[game->green.x+1][game->green.y] = 'G';
+                game->grid[game->green.x][game->green.y] = '0';
+                game->green.x++;
+            } else {
+                game->last_green_turn *= -1;
+                game->green.direction += game->last_green_turn;
+            }
+        break;
+        case 3:
+            fprintf(stderr,"GREEN LEF\n");
+            if (game->grid[game->green.x][game->green.y-1] == '0'){
+                game->grid[game->green.x][game->green.y-1] = 'G';
+                game->grid[game->green.x][game->green.y] = '0';
+                game->green.y--;
+            } else {
+                game->last_green_turn *= -1;
+                game->green.direction += game->last_green_turn;
+            }
+        break;
+    }
+}
 void server_print_map(GameState *game){
     //printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
     // Itera no bounding box, mas desenha apenas o que está no raio de Manhattan
