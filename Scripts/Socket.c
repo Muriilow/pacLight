@@ -97,7 +97,7 @@ int listener_mode(int32_t fd, struct message *received_msg) {
             int k = 0;
             for(int i = 0; i < bytes_lidos; i++){
                 buffer[k] = buffer[i];
-                if((int)buffer[i] == 0x81 || (int)buffer[i] == 0x88)
+                if((unsigned char)buffer[i] == 0x81 || (unsigned char)buffer[i] == 0x88)
                     i++;
                 k++;
             }

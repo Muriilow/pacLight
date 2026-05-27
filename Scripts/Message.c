@@ -7,13 +7,13 @@
 //ir para a linah 132
 struct global_sequence global_sequence = {0};
 
-int prepare_data(char* data, int size, char* updated_data){
+int prepare_data(char* data, uint32_t size, char* updated_data){
     int amount = 0;
     updated_data = malloc(2*sizeof(data));
     int j = 0;
-    for(int i = 0; i < size; i++){
-        if((int)data[i] == 0x81 || (int)data[i] == 0x88){
-            updated_data[j++] = 0xff;
+    for(uint32_t i = 0; i < size; i++){
+        if((unsigned char)data[i] == 0x81 || (unsigned char)data[i] == 0x88){
+            updated_data[j++] = (char)0xff;
         } else {
             updated_data[i] = data[i];
             j++;
@@ -330,7 +330,7 @@ void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
     fseek(fptr, 0, SEEK_SET);
     uint32_t seg_size;
     for(long i = 0; i < size - size%MAX_DATA; i += MAX_DATA){
-        fprintf(stderr,"envio: %8.5f\n",(float)i/size*100);
+        fprintf(stderr,"envio: %8.5f\n",(float)i/(float)size*100);
         char file_data[MAX_DATA];
         seg_size = (uint32_t) fread(file_data, 1, MAX_DATA, fptr);
         if (seg_size != MAX_DATA){
