@@ -12,8 +12,7 @@ int prepare_data(char* data, int size, char* updated_data){
     updated_data = malloc(2*sizeof(data));
     int j = 0;
     for(int i = 0; i < size; i++){
-        if(data[i] == 0x81 || data[i] == 0x88){
-
+        if((int)data[i] == 0x81 || (int)data[i] == 0x88){
             updated_data[j++] = 0xff;
         } else {
             updated_data[i] = data[i];
@@ -25,6 +24,8 @@ int prepare_data(char* data, int size, char* updated_data){
 
 struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void* data) {
     struct message* new_message = malloc(sizeof(struct message));
+    char* new_data = malloc(sizeof(char)*size);
+
     if (new_message == NULL) {
         fprintf(stderr, "Erro ao criar mensagem! {create_message}\n");
         exit(EXIT_FAILURE);
@@ -34,8 +35,10 @@ struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void* 
     new_message->size = (uint8_t)(size & 0x1F);
     new_message->sequence = (uint8_t)(seq & 0x3F);
     new_message->type = (uint8_t)(type & 0x1F);
-     
-    new_message->data = data;
+
+    prepare_data(data, size, new_data);
+    new_message->data = new_data;
+
     new_message->CRC = 1; 
 
     return new_message;
