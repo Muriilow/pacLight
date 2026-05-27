@@ -93,6 +93,15 @@ int listener_mode(int32_t fd, struct message *received_msg) {
             return LISTEN_TIMEOUT; 
 
         if (buffer[0] == 126) {
+
+            int k = 0;
+            for(int i = 0; i < bytes_lidos; i++){
+                buffer[k] = buffer[i];
+                if((int)buffer[i] == 0x81 || (int)buffer[i] == 0x88)
+                    i++;
+                k++;
+            }
+
             uint8_t size = buffer[1] & 0x1F;
             uint8_t seq = (uint8_t)(((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F);
             uint8_t type = (buffer[2] >> 3) & 0x1F;
