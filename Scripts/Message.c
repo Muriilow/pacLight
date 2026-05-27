@@ -8,6 +8,8 @@
 struct global_sequence global_sequence = {0};
 
 int prepare_data(char* data, uint32_t size, char* updated_data){
+    if(data == NULL)
+        return 0;
     int amount = 0;
     updated_data = malloc(2*sizeof(data));
     int j = 0;
