@@ -94,14 +94,6 @@ int listener_mode(int32_t fd, struct message *received_msg) {
 
         if (buffer[0] == 126) {
 
-            int k = 0;
-            for(int i = 0; i < bytes_lidos; i++){
-                buffer[k] = buffer[i];
-                if((unsigned char)buffer[i] == 0x81 || (unsigned char)buffer[i] == 0x88)
-                    i++;
-                k++;
-            }
-
             uint8_t size = buffer[1] & 0x1F;
             uint8_t seq = (uint8_t)(((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F);
             uint8_t type = (buffer[2] >> 3) & 0x1F;
@@ -115,8 +107,43 @@ int listener_mode(int32_t fd, struct message *received_msg) {
                 received_msg->type = (uint8_t)(type & 0x1F);
             }
 
-            // Verifica CRC (do marcador até o byte antes do CRC)
-            if (crc8_bitwise(buffer, (size_t)(3 + size)) != buffer[3 + size]) {
+            size_t escaped_size = 0;
+            uint8_t decoded_size = 0;
+            while (decoded_size < size && 3 + escaped_size < (size_t)bytes_lidos - 1) {
+                if ((unsigned char)buffer[3 + escaped_size] == 0xff &&
+                    3 + escaped_size + 1 < (size_t)bytes_lidos - 1 &&
+                    ((unsigned char)buffer[3 + escaped_size + 1] == 0x81 ||
+                     (unsigned char)buffer[3 + escaped_size + 1] == 0x88)) {
+                    escaped_size++;
+                }
+                escaped_size++;
+                decoded_size++;
+            }
+
+            if (decoded_size != size || 3 + escaped_size >= (size_t)bytes_lidos) {
+                fprintf(stderr, "pacote incompleto debug: bytes_lidos=%zd size=%u escaped_size=%zu decoded_size=%u\n",
+                        bytes_lidos, size, escaped_size, decoded_size);
+                printf("Erro: pacote incompleto.\n");
+                return LISTEN_CRC_ERROR;
+            }
+
+            uint8_t normal_frame[3 + MAX_DATA + 1] = {0};
+            memcpy(normal_frame, buffer, 3);
+
+            uint8_t unescaped_size = 0;
+            for (size_t i = 0; unescaped_size < size; i++) {
+                if ((unsigned char)buffer[3 + i] == 0xff &&
+                    i + 1 < escaped_size &&
+                    ((unsigned char)buffer[3 + i + 1] == 0x81 ||
+                     (unsigned char)buffer[3 + i + 1] == 0x88)) {
+                    i++;
+                }
+                normal_frame[3 + unescaped_size++] = buffer[3 + i];
+            }
+            normal_frame[3 + size] = buffer[3 + escaped_size];
+
+            // Verifica CRC sobre a mensagem reconstruída, sem bytes de escape.
+            if (crc8_bitwise(normal_frame, (size_t)(3 + size)) != normal_frame[3 + size]) {
                 printf("Erro: CRC inválido.\n");
                 return LISTEN_CRC_ERROR;
             }
@@ -124,7 +151,7 @@ int listener_mode(int32_t fd, struct message *received_msg) {
             if (received_msg != NULL && size > 0) {
                 received_msg->data = malloc(size);
                 if (received_msg->data) {
-                    memcpy(received_msg->data, &buffer[3], size);
+                    memcpy(received_msg->data, normal_frame + 3, size);
                 }
             } else if (received_msg != NULL) {
                 received_msg->data = NULL;

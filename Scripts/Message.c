@@ -7,40 +7,51 @@
 //ir para a linah 132
 struct global_sequence global_sequence = {0};
 
-int prepare_data(char* data, uint32_t size, char* updated_data){
-    if(data == NULL)
+uint32_t prepare_data(const char* data, uint32_t size, char* updated_data){
+    if(data == NULL || updated_data == NULL)
         return 0;
-    int amount = 0;
-    updated_data = malloc(2*sizeof(data));
-    int j = 0;
+
+    uint32_t j = 0;
     for(uint32_t i = 0; i < size; i++){
-        if((unsigned char)data[i] == 0x81 || (unsigned char)data[i] == 0x88){
+        unsigned char byte = (unsigned char)data[i];
+        if(byte == 0x81 || byte == 0x88){
             updated_data[j++] = (char)0xff;
-        } else {
-            updated_data[i] = data[i];
-            j++;
         }
+        updated_data[j++] = data[i];
     }
-    return amount;
+
+    return j;
 }
 
 struct message* create_message(uint32_t size, uint32_t type, uint8_t seq, void* data) {
     struct message* new_message = malloc(sizeof(struct message));
-    char* new_data = malloc(sizeof(char)*size);
+    char* new_data = NULL;
 
     if (new_message == NULL) {
         fprintf(stderr, "Erro ao criar mensagem! {create_message}\n");
         exit(EXIT_FAILURE);
     }
 
+    if (size > MAX_DATA) {
+        fprintf(stderr, "Payload muito grande! {create_message}\n");
+        free(new_message);
+        return NULL;
+    }
+
+    if (size > 0 && data != NULL) {
+        new_data = malloc(sizeof(char) * size);
+        if (new_data == NULL) {
+            free(new_message);
+            return NULL;
+        }
+        memcpy(new_data, data, size);
+    }
+
     new_message->start_marker = 126;
     new_message->size = (uint8_t)(size & 0x1F);
     new_message->sequence = (uint8_t)(seq & 0x3F);
     new_message->type = (uint8_t)(type & 0x1F);
-
-    prepare_data(data, size, new_data);
     new_message->data = new_data;
-
     new_message->CRC = 1; 
 
     return new_message;
@@ -73,20 +84,48 @@ void next_sequence() {
 }
 
 uint8_t *serialize_message(struct message *msg, size_t *final_size) {
-    size_t actual_payload_size = (size_t)(3 + msg->size + 1);
-    *final_size = (actual_payload_size < 14) ? 14 : actual_payload_size;
+    size_t normal_frame_size = (size_t)(3 + msg->size + 1);
+    uint8_t *normal_frame = calloc(1, normal_frame_size);
+    if (!normal_frame) return NULL;
 
-    uint8_t *buffer = calloc(1, *final_size); 
-    if (!buffer) return NULL;
-
-    memcpy(buffer, msg, 3);
+    memcpy(normal_frame, msg, 3);
     if (msg->size > 0 && msg->data != NULL) {
-        memcpy(buffer + 3, msg->data, msg->size);
+        memcpy(normal_frame + 3, msg->data, msg->size);
     }
 
-    //Applying CRC when serializing the message
-    msg->CRC = crc8_bitwise((const uint8_t *)buffer, actual_payload_size - 1);
-    buffer[actual_payload_size - 1] = msg->CRC;
+    //Applying CRC before escaping payload bytes
+    msg->CRC = crc8_bitwise((const uint8_t *)normal_frame, normal_frame_size - 1);
+    normal_frame[normal_frame_size - 1] = msg->CRC;
+
+    size_t max_payload_size = (size_t)msg->size * 2;
+    size_t max_frame_size = 3 + max_payload_size + 1;
+    uint8_t *buffer = calloc(1, max_frame_size);
+    if (!buffer) {
+        free(normal_frame);
+        return NULL;
+    }
+
+    memcpy(buffer, normal_frame, 3);
+
+    uint32_t escaped_size = 0;
+    if (msg->size > 0 && msg->data != NULL) {
+        escaped_size = prepare_data((const char*)msg->data, msg->size, (char*)buffer + 3);
+    }
+
+    size_t actual_frame_size = 3 + escaped_size + 1;
+    buffer[actual_frame_size - 1] = msg->CRC;
+    free(normal_frame);
+
+    *final_size = (actual_frame_size < 14) ? 14 : actual_frame_size;
+    if (*final_size > actual_frame_size) {
+        uint8_t *padded_buffer = realloc(buffer, *final_size);
+        if (padded_buffer == NULL) {
+            free(buffer);
+            return NULL;
+        }
+        memset(padded_buffer + actual_frame_size, 0, *final_size - actual_frame_size);
+        buffer = padded_buffer;
+    }
 
     return buffer;
 }
@@ -161,11 +200,10 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
 
-        if(ack_addr.data)
-            continue;
-
-        free(ack_addr.data);
-        ack_addr.data = NULL;
+        if(ack_addr.data) {
+            free(ack_addr.data);
+            ack_addr.data = NULL;
+        }
     }
     if (buffer)
         free(buffer);
@@ -211,7 +249,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     }
 
     free(visible_grid);
-    msg = create_message(total_size%MAX_DATA, TYPE_END, global_sequence.value, NULL);
+    msg = create_message(0, TYPE_END, global_sequence.value, NULL);
     buffer = serialize_message(msg, &final_size);
 
     result = -4;
@@ -222,11 +260,10 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
 
-        if(ack_addr.data)
-            continue;
-
-        free(ack_addr.data);
-        ack_addr.data = NULL;
+        if(ack_addr.data) {
+            free(ack_addr.data);
+            ack_addr.data = NULL;
+        }
     }
     fprintf(stderr, "ACK RECEBIDO\n");
 }
@@ -308,11 +345,10 @@ void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
 
-        if(ack_addr.data)
-            continue;
-
-        free(ack_addr.data);
-        ack_addr.data = NULL;
+        if(ack_addr.data) {
+            free(ack_addr.data);
+            ack_addr.data = NULL;
+        }
     }
     if (buffer)
         free(buffer);
@@ -374,11 +410,10 @@ void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
 
-        if(ack_addr.data)
-            continue;
-
-        free(ack_addr.data);
-        ack_addr.data = NULL;
+        if(ack_addr.data) {
+            free(ack_addr.data);
+            ack_addr.data = NULL;
+        }
     }
     if(buffer)
         free(buffer);
@@ -398,11 +433,10 @@ void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
         if(result == TYPE_ACK){
             fprintf(stderr, "ACK RECEBIDO\n");
         }
-        if(ack_addr.data)
-            continue;
-
-        free(ack_addr.data);
-        ack_addr.data = NULL;
+        if(ack_addr.data) {
+            free(ack_addr.data);
+            ack_addr.data = NULL;
+        }
     }
     
     if (buffer)
@@ -471,27 +505,36 @@ uint8_t crc8_bitwise(const uint8_t *data, size_t size) {
 
 void wait_big(int fd, uint32_t ifindex, int type, char* fileName){
     fprintf(stderr,"Waiting file\n");
-    struct message received_msg;
+    struct message received_msg = {0};
     int result = -4;
     int raw_type;
-    char name[42] = "Receive/"; //(tamanho de "Receive/")8  + 32 + 1 para termindaor nulo
+    char name[42] = {0};
     
     if (type == TYPE_TXT)
-        snprintf(name, sizeof(name), "Receive/%s.txt", fileName);
+        snprintf(name, sizeof(name), "%s.txt", fileName);
     else if (type == TYPE_JPG)
-        snprintf(name, sizeof(name), "Receive/%s.jpg", fileName);
+        snprintf(name, sizeof(name), "%s.jpg", fileName);
     else if (type == TYPE_MP4)
-        snprintf(name, sizeof(name), "Receive/%s.mp4", fileName);
+        snprintf(name, sizeof(name), "%s.mp4", fileName);
 
     fprintf(stderr,"%s\n",name);
     FILE* new_file = fopen(name, "wb");
+    if (new_file == NULL) {
+        perror("Erro ao criar arquivo recebido");
+        return;
+    }
     //não ta finalizando(devo ter esquecido alguma lógica na finalização)
     while(result != TYPE_END){
         raw_type = listener_mode(fd, &received_msg);
         result = handle_listen_result(fd, ifindex, raw_type, &received_msg, global_sequence.value);
         fprintf(stderr,"result in wait: %d\n", result);
-        if(result == TYPE_DATA)
+        if(result == TYPE_DATA && received_msg.data != NULL)
             fwrite(received_msg.data, 1, received_msg.size, new_file);
+
+        if(received_msg.data) {
+            free(received_msg.data);
+            received_msg.data = NULL;
+        }
     }
     fclose(new_file);
     //char* open = malloc(sizeof(name)+ 10);
