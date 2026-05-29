@@ -109,9 +109,9 @@ int listener_mode(int32_t fd, struct message *received_msg) {
 
             size_t escaped_size = 0;
             uint8_t decoded_size = 0;
-            while (decoded_size < size && 3 + escaped_size < (size_t)bytes_lidos - 1) {
+            while (decoded_size < size && 3 + escaped_size < (size_t)bytes_lidos) {
                 if ((unsigned char)buffer[3 + escaped_size] == 0xff &&
-                    3 + escaped_size + 1 < (size_t)bytes_lidos - 1 &&
+                    3 + escaped_size + 1 < (size_t)bytes_lidos &&
                     ((unsigned char)buffer[3 + escaped_size + 1] == 0x81 ||
                      (unsigned char)buffer[3 + escaped_size + 1] == 0x88)) {
                     escaped_size++;
@@ -120,9 +120,10 @@ int listener_mode(int32_t fd, struct message *received_msg) {
                 decoded_size++;
             }
 
-            if (decoded_size != size || 3 + escaped_size >= (size_t)bytes_lidos) {
-                fprintf(stderr, "pacote incompleto debug: bytes_lidos=%zd size=%u escaped_size=%zu decoded_size=%u\n",
-                        bytes_lidos, size, escaped_size, decoded_size);
+            size_t crc_index = 3 + escaped_size;
+            if (decoded_size != size || crc_index >= (size_t)bytes_lidos) {
+                fprintf(stderr, "pacote incompleto debug: bytes_lidos=%zd size=%u escaped_size=%zu decoded_size=%u crc_index=%zu\n",
+                        bytes_lidos, size, escaped_size, decoded_size, crc_index);
                 printf("Erro: pacote incompleto.\n");
                 return LISTEN_CRC_ERROR;
             }
@@ -140,7 +141,7 @@ int listener_mode(int32_t fd, struct message *received_msg) {
                 }
                 normal_frame[3 + unescaped_size++] = buffer[3 + i];
             }
-            normal_frame[3 + size] = buffer[3 + escaped_size];
+            normal_frame[3 + size] = buffer[crc_index];
 
             // Verifica CRC sobre a mensagem reconstruída, sem bytes de escape.
             if (crc8_bitwise(normal_frame, (size_t)(3 + size)) != normal_frame[3 + size]) {
