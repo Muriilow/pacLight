@@ -107,129 +107,65 @@ void print_game_screen(const char *visible_grid, int radius) {
 
 int handle_move(GameState *game, uint16_t direction)
 {
+    int next_x = game->pacman_x;
+    int next_y = game->pacman_y;
+
     switch (direction)
     {
-    case 0:
-        //fprintf(stderr,"UP  ");
-        char colision = game->grid[game->pacman_x - 1][game->pacman_y];
-        switch(colision){
-            case ('X'):
-                game->move_count --;
-                break;
-            case('1'):
-            case('2'):
-            case('3'):
-            case('4'):
-            case('5'):
-            case('6'):
-                game->grid[game->pacman_x][game->pacman_y] = '.';
-                game->grid[game->pacman_x - 1][game->pacman_y] = 'P';
-                game->pacman_x --;
-                return (colision - '0');
-            case('R'):
-            case('G'):
-            case('B'):
-            case('Y'):
-                return 8;          
-            default:
-                game->grid[game->pacman_x][game->pacman_y] = '.';
-                game->grid[game->pacman_x - 1][game->pacman_y] = 'P';
-                game->pacman_x --;
-                break;
-        }
-        break;
-    case 1:
-        colision = game->grid[game->pacman_x + 1][game->pacman_y];
-        switch(colision)
-        {
-        case ('X'):
-            game->move_count --;
+        case 0:
+            next_x--;
             break;
-        case('1'):
-        case('2'):
-        case('3'):
-        case('4'):
-        case('5'):
-        case('6'):
-            game->grid[game->pacman_x][game->pacman_y] = '.';
-            game->grid[game->pacman_x + 1][game->pacman_y] = 'P';
-            game->pacman_x ++;
-            return (colision - '0');
-        case('R'):
-        case('G'):
-        case('B'):
-        case('Y'):
-            return 8;          
+        case 1:
+            next_x++;
+            break;
+        case 2:
+            next_y--;
+            break;
+        case 3:
+            next_y++;
+            break;
         default:
-            game->grid[game->pacman_x][game->pacman_y] = '.';
-            game->grid[game->pacman_x + 1][game->pacman_y] = 'P';
-            game->pacman_x ++;
-            break;
-        }
-        break;
-    case 2:
-        colision = game->grid[game->pacman_x][game->pacman_y - 1];
-        switch(colision)
-        {
-        case ('X'):
-            game->move_count --;
-            break;
-        case('1'):
-        case('2'):
-        case('3'):
-        case('4'):
-        case('5'):
-        case('6'):
-            game->grid[game->pacman_x][game->pacman_y] = '.';
-            game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
-            game->pacman_y --;
-            return (colision - '0');
-        case('R'):
-        case('G'):
-        case('B'):
-        case('Y'):
-            return 8;          
-        default:
-            game->grid[game->pacman_x][game->pacman_y] = '.';
-            game->grid[game->pacman_x][game->pacman_y - 1] = 'P';
-            game->pacman_y --;
-            break;
-        }
-        break;
-    case 3:
-        colision = game->grid[game->pacman_x][game->pacman_y + 1];
-        switch(colision)
-        {
-        case ('X'):
-            game->move_count --;
-            break;
-        case('1'):
-        case('2'):
-        case('3'):
-        case('4'):
-        case('5'):
-        case('6'):
-            game->grid[game->pacman_x][game->pacman_y] = '.';
-            game->grid[game->pacman_x][game->pacman_y + 1] = 'P';
-            game->pacman_y ++;
-            return (colision - '0');
-        case('R'):
-        case('G'):
-        case('B'):
-        case('Y'):
-            return 8;          
-        default:
-            printf("y+1 = %c\n",game->grid[game->pacman_x][game->pacman_y + 1]);
-            game->grid[game->pacman_x][game->pacman_y] = '.';
-            game->grid[game->pacman_x][game->pacman_y + 1] = 'P';
-            game->pacman_y ++;
-            break;
-        }
-        break;
+            game->visibility_radius = INITIAL_VISIBILITY+game->move_count/VISIBILITY_INCREMENT_INTERVAL;
+            return 0;
     }
+
+    char colision = game->grid[next_x][next_y];
+    switch(colision)
+    {
+        case ('X'):
+            game->move_count --;
+            break;
+        case('1'):
+        case('2'):
+        case('3'):
+        case('4'):
+        case('5'):
+        case('6'):
+            game->grid[game->pacman_x][game->pacman_y] = '.';
+            game->grid[next_x][next_y] = 'P';
+            game->pacman_x = next_x;
+            game->pacman_y = next_y;
+            return (colision - '0');
+        case('R'):
+        case('G'):
+        case('B'):
+        case('Y'):
+            return 8;
+        default:
+            if (direction == 3) {
+                printf("y+1 = %c\n", game->grid[next_x][next_y]);
+            }
+            game->grid[game->pacman_x][game->pacman_y] = '.';
+            game->grid[next_x][next_y] = 'P';
+            game->pacman_x = next_x;
+            game->pacman_y = next_y;
+            break;
+    }
+
     game->visibility_radius = INITIAL_VISIBILITY+game->move_count/VISIBILITY_INCREMENT_INTERVAL;
     return 0;
 }
+
 void update_map(GameState *game)
 {  
     moveghosts(game);

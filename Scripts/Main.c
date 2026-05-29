@@ -219,6 +219,8 @@ int main(int argc, char *argv[])
                     send_big(file_desc, ifindex, name, TYPE_JPG);
                 } else if(status == 5 || status == 6){
                     send_big(file_desc, ifindex, name, TYPE_MP4);
+                } else if(status == 8){
+                    send_big(file_desc, ifindex, "linuxLogo", TYPE_JPG);
                 }
 
                 update_map(&game);
