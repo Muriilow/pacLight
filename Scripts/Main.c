@@ -40,14 +40,15 @@ int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
-        printf("Uso: %s [server|player] [interface]\n", argv[0]);
+        printf("Uso: %s [server|player] [interface] [mapa.csv]\n", argv[0]);
         return 1; 
     }
 
     char *mode = argv[1];
     char *interface = (argc > 2) ? argv[2] : "lo";
+    const char *map_filename = (argc > 3) ? argv[3] : "Assets/mapa_padrao.csv";
     struct message received_msg;
-        received_msg.data = NULL;
+    received_msg.data = NULL;
 
     uint32_t ifindex = if_nametoindex(interface);
     int32_t file_desc = create_raw_socket(ifindex);
@@ -151,9 +152,9 @@ int main(int argc, char *argv[])
         printf("Carregando o mapa!\n");
         GameState game = {0};
         init_game(&game);
-        if (load_map_from_csv(&game, "Assets/mapa_padrao.csv") != 0)
+        if (load_map_from_csv(&game, map_filename) != 0)
         {
-            fprintf(stderr, "Erro ao carregar o mapa em Assets/mapa_padrao.csv\n");
+            fprintf(stderr, "Erro ao carregar o mapa em %s\n", map_filename);
             close(file_desc);
             return 1;
         }
