@@ -113,7 +113,8 @@ int listener_mode(int32_t fd, struct message *received_msg) {
                 if ((unsigned char)buffer[3 + escaped_size] == 0xff &&
                     3 + escaped_size + 1 < (size_t)bytes_lidos &&
                     ((unsigned char)buffer[3 + escaped_size + 1] == 0x81 ||
-                     (unsigned char)buffer[3 + escaped_size + 1] == 0x88)) {
+                     (unsigned char)buffer[3 + escaped_size + 1] == 0x88 ||
+                     (unsigned char)buffer[3 + escaped_size + 1] == 0xff)) {
                     escaped_size++;
                 }
                 escaped_size++;
@@ -136,7 +137,8 @@ int listener_mode(int32_t fd, struct message *received_msg) {
                 if ((unsigned char)buffer[3 + i] == 0xff &&
                     i + 1 < escaped_size &&
                     ((unsigned char)buffer[3 + i + 1] == 0x81 ||
-                     (unsigned char)buffer[3 + i + 1] == 0x88)) {
+                     (unsigned char)buffer[3 + i + 1] == 0x88 ||
+                     (unsigned char)buffer[3 + i + 1] == 0xff)) {
                     i++;
                 }
                 normal_frame[3 + unescaped_size++] = buffer[3 + i];
