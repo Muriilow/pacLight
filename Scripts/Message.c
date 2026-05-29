@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <pwd.h>
 
 //ir para a linah 132
 struct global_sequence global_sequence = {0};
@@ -537,9 +539,47 @@ void wait_big(int fd, uint32_t ifindex, int type, char* fileName){
         }
     }
     fclose(new_file);
-    //char* open = malloc(sizeof(name)+ 10);
-    //snprintf(open, sizeof(name)+10, "mpv \"%s\"", name);
-    //system(name);
+
+    pid_t pid = fork();
+    if (pid == 0) {
+        char *sudo_gid = getenv("SUDO_GID");
+        char *sudo_uid = getenv("SUDO_UID");
+        char *sudo_user = getenv("SUDO_USER");
+
+        if (sudo_gid != NULL && sudo_uid != NULL) {
+            uid_t uid = (uid_t)strtoul(sudo_uid, NULL, 10);
+            gid_t gid = (gid_t)strtoul(sudo_gid, NULL, 10);
+            struct passwd *pw = getpwuid(uid);
+            char runtime_dir[64];
+
+            if (pw != NULL && pw->pw_dir != NULL) {
+                setenv("HOME", pw->pw_dir, 1);
+            }
+            if (sudo_user != NULL) {
+                setenv("USER", sudo_user, 1);
+                setenv("LOGNAME", sudo_user, 1);
+            }
+            snprintf(runtime_dir, sizeof(runtime_dir), "/run/user/%lu", (unsigned long)uid);
+            setenv("XDG_RUNTIME_DIR", runtime_dir, 1);
+            unsetenv("XDG_CONFIG_HOME");
+            unsetenv("XDG_CACHE_HOME");
+            unsetenv("XDG_DATA_HOME");
+
+            if (setgid(gid) != 0 || setuid(uid) != 0) {
+                _exit(EXIT_FAILURE);
+            }
+        }
+
+        freopen("/dev/null", "r", stdin);
+        freopen("/dev/null", "w", stdout);
+        freopen("/dev/null", "w", stderr);
+        setsid();
+
+        execlp("xdg-open", "xdg-open", name, (char *)NULL);
+        _exit(EXIT_FAILURE);
+    } else if (pid < 0) {
+        perror("Erro ao abrir arquivo recebido");
+    }
 }
 char* wait_map(int fd, uint32_t ifindex){
     struct message received_msg;
