@@ -18,6 +18,15 @@
 
 typedef enum { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT , ASK_JPG, MOVE_UNKNOWN} Moves;
 
+static void free_message_data(struct message *msg)
+{
+    if (msg != NULL && msg->data != NULL)
+    {
+        free(msg->data);
+        msg->data = NULL;
+    }
+}
+
 Moves stringToEnum(char *str) {
     if (strcasecmp(str, "w") == 0) return MOVE_UP;
     if (strcasecmp(str, "s") == 0) return MOVE_DOWN;
@@ -51,8 +60,8 @@ int main(int argc, char *argv[])
         int result = -4;
         int raw_type;
         char command[20];
-        int* radius = malloc(sizeof(int));
-        char* map_view;
+        int radius = 0;
+        char* map_view = NULL;
         
         while(1)
         {
@@ -68,22 +77,28 @@ int main(int argc, char *argv[])
                     
                     wait_big(file_desc, ifindex, result, (char*)received_msg.data);
                 }
+                if(result != TYPE_VISUAL){
+                    free_message_data(&received_msg);
+                }
                 fprintf(stderr,"esperando visual type\n");
             }
             fprintf(stderr, "visual recieved  ");
             //fprintf(stderr, "raio: %d\n" ,(int)received_msg.data);
-            memcpy(radius, received_msg.data, sizeof(int));
+            if (received_msg.data != NULL && received_msg.size >= sizeof(radius)) {
+                memcpy(&radius, received_msg.data, sizeof(radius));
+            }
+            free_message_data(&received_msg);
             //fprintf(stderr,"raio: %d", radius);
             fprintf(stderr,"esperando mapa\n");
             map_view = wait_map(file_desc,ifindex);
             printf("Mapa recebido!\n");
-            print_game_screen(map_view, *radius);
-
-            if (msg.data)
-            {
-                free(msg.data); 
-                msg.data = NULL;
+            if (map_view != NULL) {
+                print_game_screen(map_view, radius);
+                free(map_view);
+                map_view = NULL;
             }
+
+            free_message_data(&msg);
 
             //Captura comando do usuário
             printf("Comando: ");
@@ -100,6 +115,7 @@ int main(int argc, char *argv[])
                             printf("waiting M_ack\n");
                             raw_type = listener_mode(file_desc, &msg);
                             result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+                            free_message_data(&msg);
                         }
                         break;
                     case MOVE_DOWN:
@@ -109,6 +125,7 @@ int main(int argc, char *argv[])
                             printf("waiting M_ack\n");
                             raw_type = listener_mode(file_desc, &msg);
                             result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+                            free_message_data(&msg);
                         }
                         break;
                     case MOVE_LEFT:
@@ -118,6 +135,7 @@ int main(int argc, char *argv[])
                             printf("waiting M_ack\n");
                             raw_type = listener_mode(file_desc, &msg);
                             result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+                            free_message_data(&msg);
                         }
                         break;
                     case MOVE_RIGHT:
@@ -127,6 +145,7 @@ int main(int argc, char *argv[])
                             printf("waiting M_ack\n");
                             raw_type = listener_mode(file_desc, &msg);
                             result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+                            free_message_data(&msg);
                         }
                         break;
                     default:
@@ -173,12 +192,7 @@ int main(int argc, char *argv[])
                 printf("waiting input\n");
                 raw_type = listener_mode(file_desc, &received_msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
-                
-                if(received_msg.data){
-                    continue;
-                }
-                free(received_msg.data);
-                received_msg.data = NULL;
+                free_message_data(&received_msg);
             }
                 moved = 1;
 
@@ -249,12 +263,7 @@ int main(int argc, char *argv[])
                 default:
                     break;
             }
-            if(received_msg.data)
-            {
-                free(received_msg.data);
-                received_msg.data = NULL;
-            }            
-            //break; //para nao dar loop infinito, depois retirar
+            free_message_data(&received_msg);
         }
     }
     return 0;
