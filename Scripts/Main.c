@@ -76,8 +76,6 @@ int main(int argc, char *argv[])
                 if(result == TYPE_JPG || result == TYPE_TXT || result == TYPE_MP4){
                     
                     wait_big(file_desc, ifindex, result, (char*)received_msg.data);
-                }
-                if(result != TYPE_VISUAL){
                     free_message_data(&received_msg);
                 }
                 fprintf(stderr,"esperando visual type\n");
@@ -103,56 +101,40 @@ int main(int argc, char *argv[])
             //Captura comando do usuário
             printf("Comando: ");
             while (scanf("%19s", command) == 1)
-            {   
-                result = -4;
-                switch(stringToEnum(command))
+            {
+                Moves move = stringToEnum(command);
+                if (move == MOVE_UNKNOWN || move == ASK_JPG)
                 {
-                    case MOVE_UP:
-                    //Envia Comando (TYPE_UP) e espera a nova visualização
-                        while (result != TYPE_ACK) 
-                        {
+                    printf("Comando invalido!\nOpcoes:\n 'w' - 'a' - 's' - 'd' - 'k'\n");
+                    printf("Comando: ");
+                    continue;
+                }
+
+                result = -4;
+                while (result != TYPE_ACK)
+                {
+                    switch(move)
+                    {
+                        case MOVE_UP:
                             send_up(file_desc, ifindex);
-                            printf("waiting M_ack\n");
-                            raw_type = listener_mode(file_desc, &msg);
-                            result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
-                            free_message_data(&msg);
-                        }
-                        break;
-                    case MOVE_DOWN:
-                        while (result != TYPE_ACK) 
-                        {
+                            break;
+                        case MOVE_DOWN:
                             send_down(file_desc, ifindex);
-                            printf("waiting M_ack\n");
-                            raw_type = listener_mode(file_desc, &msg);
-                            result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
-                            free_message_data(&msg);
-                        }
-                        break;
-                    case MOVE_LEFT:
-                        while (result != TYPE_ACK)
-                        {
+                            break;
+                        case MOVE_LEFT:
                             send_left(file_desc, ifindex);
-                            printf("waiting M_ack\n");
-                            raw_type = listener_mode(file_desc, &msg);
-                            result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
-                            free_message_data(&msg);
-                        }
-                        break;
-                    case MOVE_RIGHT:
-                        while (result != TYPE_ACK) 
-                        {
+                            break;
+                        case MOVE_RIGHT:
                             send_right(file_desc, ifindex);
-                            printf("waiting M_ack\n");
-                            raw_type = listener_mode(file_desc, &msg);
-                            result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
-                            free_message_data(&msg);
-                        }
-                        break;
-                    default:
-                        printf("Comando invalido!\nOpcoes:\n 'w' - 'a' - 's' - 'd' - 'k'\n");
-                        printf("Comando: ");
-                        continue;
-                }                
+                            break;
+                        default:
+                            break;
+                    }
+                    printf("waiting M_ack\n");
+                    raw_type = listener_mode(file_desc, &msg);
+                    result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
+                    free_message_data(&msg);
+                }
                 break; // impede de ficar em loop esperando input
             }
         }
