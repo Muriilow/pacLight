@@ -151,7 +151,12 @@ int main(int argc, char *argv[])
         printf("Carregando o mapa!\n");
         GameState game = {0};
         init_game(&game);
-        if (load_map_from_csv(&game, "Assets/mapa_padrao.csv") != 0){}
+        if (load_map_from_csv(&game, "Assets/mapa_padrao.csv") != 0)
+        {
+            fprintf(stderr, "Erro ao carregar o mapa em Assets/mapa_padrao.csv\n");
+            close(file_desc);
+            return 1;
+        }
         server_print_map(&game);
         printf("Iniciando o servidor!\n");
 
@@ -182,68 +187,41 @@ int main(int argc, char *argv[])
             fprintf(stderr,"GLOBAL SEQ AFTER MOVE: %d\n",global_sequence.value);
             //Aqui trataremos a logica do jogo (Sequencia ja avancou no final do handle_listen_result)
             printf("Comando %d recebido!\n", result);
-            int status;
-            char name[2];
+            int direction = -1;
             switch (result)
             {
                 case TYPE_UP:
-                    status = handle_move(&game, 0);
-                    snprintf(name, sizeof(name), "%d", status);
-                    if(status == 1 || status == 2){
-                        send_big(file_desc, ifindex,  name, TYPE_TXT);
-                    } else if(status == 3 || status == 4){
-                        send_big(file_desc, ifindex,  name, TYPE_JPG);
-                    } else if(status == 5 || status == 6){
-                        send_big(file_desc, ifindex,  name, TYPE_MP4);
-                    }
-                    update_map(&game);
-                    server_print_map(&game);
+                    direction = 0;
                     break;
-
                 case TYPE_DOWN:
-                    status = handle_move(&game, 1);
-                    snprintf(name, sizeof(name), "%d", status);
-                    if(status == 1 || status == 2){
-                        send_big(file_desc, ifindex,  name, TYPE_TXT);
-                    } else if(status == 3 || status == 4){
-                        send_big(file_desc, ifindex,  name, TYPE_JPG);
-                    } else if(status == 5 || status == 6){
-                        send_big(file_desc, ifindex,  name, TYPE_MP4);
-                    }
-                    update_map(&game);
-                    server_print_map(&game);
+                    direction = 1;
                     break;
-
                 case TYPE_LEFT:
-                    status = handle_move(&game, 2);
-                    snprintf(name, sizeof(name), "%d", status);
-                    if(status == 1 || status == 2){
-                        send_big(file_desc, ifindex,  name, TYPE_TXT);
-                    } else if(status == 3 || status == 4){
-                        send_big(file_desc, ifindex,  name, TYPE_JPG);
-                    } else if(status == 5 || status == 6){
-                        send_big(file_desc, ifindex,  name, TYPE_MP4);
-                    }
-                    update_map(&game);
-                    server_print_map(&game);
+                    direction = 2;
                     break;
-
                 case TYPE_RIGHT:
-                    status = handle_move(&game, 3);
-                    snprintf(name, sizeof(name), "%d", status);
-                    if(status == 1 || status == 2){
-                        send_big(file_desc, ifindex, name, TYPE_TXT);
-                    } else if(status == 3 || status == 4){
-                        send_big(file_desc, ifindex,  name, TYPE_JPG);
-                    } else if(status == 5 || status == 6){
-                        send_big(file_desc, ifindex,  name, TYPE_MP4);
-                    }
-                    update_map(&game);
-                    server_print_map(&game);
+                    direction = 3;
                     break;
-
                 default:
                     break;
+            }
+
+            if (direction != -1)
+            {
+                int status = handle_move(&game, (uint16_t)direction);
+                char name[2];
+                snprintf(name, sizeof(name), "%d", status);
+
+                if(status == 1 || status == 2){
+                    send_big(file_desc, ifindex, name, TYPE_TXT);
+                } else if(status == 3 || status == 4){
+                    send_big(file_desc, ifindex, name, TYPE_JPG);
+                } else if(status == 5 || status == 6){
+                    send_big(file_desc, ifindex, name, TYPE_MP4);
+                }
+
+                update_map(&game);
+                server_print_map(&game);
             }
             free_message_data(&received_msg);
         }
