@@ -110,15 +110,14 @@ int listener_mode(int32_t fd, struct message *received_msg) {
             size_t escaped_size = 0;
             uint8_t decoded_size = 0;
             while (decoded_size < size && 3 + escaped_size < (size_t)bytes_lidos) {
-                if ((unsigned char)buffer[3 + escaped_size] == 0xff &&
-                    3 + escaped_size + 1 < (size_t)bytes_lidos &&
-                    ((unsigned char)buffer[3 + escaped_size + 1] == 0x81 ||
-                     (unsigned char)buffer[3 + escaped_size + 1] == 0x88 ||
-                     (unsigned char)buffer[3 + escaped_size + 1] == 0xff)) {
-                    escaped_size++;
-                }
+                unsigned char byte = (unsigned char)buffer[3 + escaped_size];
                 escaped_size++;
                 decoded_size++;
+                if ((byte == 0x81 || byte == 0x88 || byte == 0xff) &&
+                    3 + escaped_size < (size_t)bytes_lidos &&
+                    (unsigned char)buffer[3 + escaped_size] == 0xff) {
+                    escaped_size++;
+                }
             }
 
             size_t crc_index = 3 + escaped_size;
@@ -134,14 +133,13 @@ int listener_mode(int32_t fd, struct message *received_msg) {
 
             uint8_t unescaped_size = 0;
             for (size_t i = 0; unescaped_size < size; i++) {
-                if ((unsigned char)buffer[3 + i] == 0xff &&
+                unsigned char byte = (unsigned char)buffer[3 + i];
+                normal_frame[3 + unescaped_size++] = buffer[3 + i];
+                if ((byte == 0x81 || byte == 0x88 || byte == 0xff) &&
                     i + 1 < escaped_size &&
-                    ((unsigned char)buffer[3 + i + 1] == 0x81 ||
-                     (unsigned char)buffer[3 + i + 1] == 0x88 ||
-                     (unsigned char)buffer[3 + i + 1] == 0xff)) {
+                    (unsigned char)buffer[3 + i + 1] == 0xff) {
                     i++;
                 }
-                normal_frame[3 + unescaped_size++] = buffer[3 + i];
             }
             normal_frame[3 + size] = buffer[crc_index];
 

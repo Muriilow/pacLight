@@ -16,10 +16,10 @@ uint32_t prepare_data(const char* data, uint32_t size, char* updated_data){
     uint32_t j = 0;
     for(uint32_t i = 0; i < size; i++){
         unsigned char byte = (unsigned char)data[i];
+        updated_data[j++] = data[i];
         if(byte == 0x81 || byte == 0x88 || byte == 0xff){
             updated_data[j++] = (char)0xff;
         }
-        updated_data[j++] = data[i];
     }
 
     return j;
