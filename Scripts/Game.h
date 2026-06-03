@@ -20,6 +20,7 @@ typedef struct {
     int pills_collected;
     int last_green_turn;
     Ghost red, green, blue, yellow;
+
 } GameState;
 
 void init_game(GameState *game);

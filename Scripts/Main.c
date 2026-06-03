@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "resultado: %d\n",result);
                 if(result == TYPE_JPG || result == TYPE_TXT || result == TYPE_MP4){
                     
-                    wait_big(file_desc, ifindex, result, (char*)received_msg.data);
+                    wait_file(file_desc, ifindex, result, (char*)received_msg.data);
                     free_message_data(&received_msg);
                 }
                 fprintf(stderr,"esperando visual type\n");
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
                 Moves move = stringToEnum(command);
                 if (move == MOVE_UNKNOWN || move == ASK_JPG)
                 {
-                    printf("Comando invalido!\nOpcoes:\n 'w' - 'a' - 's' - 'd' - 'k'\n");
+                    printf("Comando invalido!\nOpcoes:\n 'w' - 'a' - 's' - 'd'\n");
                     printf("Comando: ");
                     continue;
                 }
@@ -214,13 +214,13 @@ int main(int argc, char *argv[])
                 snprintf(name, sizeof(name), "%d", status);
 
                 if(status == 1 || status == 2){
-                    send_big(file_desc, ifindex, name, TYPE_TXT);
+                    send_file(file_desc, ifindex, name, TYPE_TXT);
                 } else if(status == 3 || status == 4){
-                    send_big(file_desc, ifindex, name, TYPE_JPG);
+                    send_file(file_desc, ifindex, name, TYPE_JPG);
                 } else if(status == 5 || status == 6){
-                    send_big(file_desc, ifindex, name, TYPE_MP4);
+                    send_file(file_desc, ifindex, name, TYPE_MP4);
                 } else if(status == 8){
-                    send_big(file_desc, ifindex, "linuxLogo", TYPE_JPG);
+                    send_file(file_desc, ifindex, "linuxLogo", TYPE_JPG);
                 }
 
                 update_map(&game);

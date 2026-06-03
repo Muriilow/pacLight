@@ -21,7 +21,6 @@ uint32_t prepare_data(const char* data, uint32_t size, char* updated_data){
             updated_data[j++] = (char)0xff;
         }
     }
-
     return j;
 }
 
@@ -326,7 +325,7 @@ void send_right(int fd, uint32_t ifindex)
     
     free(msg);
 }
-void send_big(int fd, uint32_t ifindex, char* name, uint32_t type){
+void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
 
     uint32_t n_size = (uint32_t) strlen(name)+1;
     if (n_size > 31){
@@ -505,7 +504,7 @@ uint8_t crc8_bitwise(const uint8_t *data, size_t size) {
     return crc;
 }
 
-void wait_big(int fd, uint32_t ifindex, int type, char* fileName){
+void wait_file(int fd, uint32_t ifindex, int type, char* fileName){
     fprintf(stderr,"Waiting file\n");
     struct message received_msg = {0};
     int result = -4;

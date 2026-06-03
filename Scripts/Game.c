@@ -9,21 +9,38 @@ void init_ghost(Ghost* ghost, int x, int y, int direction){
     ghost->x = x;
     ghost->y = y;
 }
+void init_pastilhas(GameState* game){
+    for(int i = 1; i <= 6; i++){
+        fprintf(stderr, "gerando %d\n",i);
+        int placed = 0;
+        char pastilha = (char)(i + '0');
+        while(placed == 0){
+            int randx = rand() % 40;
+            int randy = rand() % 40;
+            if(game->grid[randx][randy] == '0'){
+                game->grid[randx][randy] = pastilha;
+                placed = 0;
+            }
+        }
+    }
+}
 void init_game(GameState *game) {
-    game->pacman_x = 0;
-    game->pacman_y = 0;
+    game->pacman_x = -1;
+    game->pacman_y = -1;
     game->visibility_radius = INITIAL_VISIBILITY;
     game->move_count = 0;
     game->pills_collected = 0;
+    game->red.x = -1;
+    game->green.x = -1;
+    game->blue.x = -1;
+    game->yellow.x = -1;
     memset(game->grid, '0', sizeof(game->grid));
-    init_ghost(&game->red, 1, 1, rand()%4);
-    init_ghost(&game->green, 1, 38, rand()%4);
     game->last_green_turn = 1;
-    init_ghost(&game->blue, 38, 1, rand()%4);
-    init_ghost(&game->yellow, 38, 38, rand()%4);
     }
+
 int load_map_from_csv(GameState *game, const char *filename) {
     FILE *file = fopen(filename, "r");
+    int tem_pastilha = 0;
     if (!file) {
         return -1;
     }
@@ -39,15 +56,82 @@ int load_map_from_csv(GameState *game, const char *filename) {
                 game->pacman_x = col;
                 game->pacman_y = row;
             }
+            else if (token[0] == 'R') {
+                game->red.x = col;
+                game->red.y = row;
+            }
+            else if (token[0] == 'G') {
+                game->green.x = col;
+                game->green.y = row;
+            }
+            else if (token[0] == 'B') {
+                game->blue.x = col;
+                game->blue.y = row;
+            }
+            else if (token[0] == 'Y') {
+                game->yellow.x = col;
+                game->yellow.y = row;
+            }
+            else if (token[0] == '1'){
+                tem_pastilha = 1;
+            }
+
             token = strtok(NULL, ";");
             col++;
         }
         row++;
     }
-    game->grid[game->red.x][game->red.y] = 'R';
-    game->grid[game->green.x][game->green.y] = 'G';
-    game->grid[game->blue.x][game->blue.y] = 'B';
-    game->grid[game->yellow.x][game->yellow.y] = 'Y';
+    fprintf(stderr, "mapa lido\n");
+    while(game->pacman_x == -1){
+        fprintf(stderr, "gerando pacman\n");
+        int randx = rand()%40;
+        int randy = rand()%40;
+        if(game->grid[randx][randy] == '0'){
+            init_ghost(&game->red, randx, randy, rand()%4);
+            game->grid[game->red.x][game->red.y] = 'R';
+        }
+    }
+    while(game->red.x == -1){
+        fprintf(stderr, "gerando red\n");
+        int randx = rand()%40;
+        int randy = rand()%40;
+        if(game->grid[randx][randy] == '0'){
+            init_ghost(&game->red, randx, randy, rand()%4);
+            game->grid[game->red.x][game->red.y] = 'R';
+        }
+    }
+    while(game->green.x == -1){
+        fprintf(stderr, "gerando green\n");
+        int randx = rand()%40;
+        int randy = rand()%40;
+        if(game->grid[randx][randy] == '0'){
+            init_ghost(&game->green, randx, randy, rand()%4);
+            game->grid[game->green.x][game->green.y] = 'G';
+        }
+    }
+    while(game->blue.x == -1){
+        fprintf(stderr, "gerando blue\n");
+        int randx = rand()%40;
+        int randy = rand()%40;
+        if(game->grid[randx][randy] == '0'){
+            init_ghost(&game->blue, randx, randy, rand()%4);
+            game->grid[game->blue.x][game->blue.y] = 'B';
+        }
+    }
+    while(game->yellow.x == -1){
+        fprintf(stderr, "gerando yellow\n");
+        int randx = rand()%40;
+        int randy = rand()%40;
+        if(game->grid[randx][randy] == '0'){
+            init_ghost(&game->yellow, randx, randy, rand()%4);
+            game->grid[game->yellow.x][game->yellow.y] = 'Y';
+        }
+    }
+    if(tem_pastilha == 0){
+        init_pastilhas(game);
+    }
+
+
     fclose(file);
     return 0;
 }
@@ -141,6 +225,7 @@ int handle_move(GameState *game, uint16_t direction)
         case('4'):
         case('5'):
         case('6'):
+            game->pills_collected++;
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[next_x][next_y] = 'P';
             game->pacman_x = next_x;
