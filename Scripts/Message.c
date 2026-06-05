@@ -208,6 +208,9 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     }
     if (buffer)
         free(buffer);
+    if(msg->data)
+        free(msg->data);
+    free(msg);
     fprintf(stderr,"total size: %d\n", total_size);
     for(i = 0; i < total_size - total_size%MAX_DATA; i+=MAX_DATA){
         fprintf(stderr,"i: %d \n", i);
@@ -224,9 +227,10 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
             result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
         }
 
-        if (buffer) {
+        if (buffer)
             free(buffer);
-        }
+        if(msg->data)
+            free(msg->data);
         free(msg);
     }
     if (total_size%MAX_DATA > 0){
@@ -242,10 +246,10 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
             result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
         }
 
-        if (buffer) {
+        if (buffer)
             free(buffer);
-        }
-    
+        if(msg->data)
+            free(msg->data);
         free(msg);
     }
 
@@ -266,6 +270,9 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
             ack_addr.data = NULL;
         }
     }
+    if (buffer)
+        free(buffer);
+    free(msg);
     fprintf(stderr, "ACK RECEBIDO\n");
 }
 
@@ -353,16 +360,20 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     }
     if (buffer)
         free(buffer);
+    if(msg->data)
+        free(msg->data);
     free(msg);
-
-
-    FILE *fptr = fopen(name_handle(name, (int)type), "rb");
+    
+    char* file_name = name_handle(name, (int)type);
+    FILE *fptr = fopen(file_name, "rb");
+    free(file_name);
     if (fptr == NULL) return;
 
     fseek(fptr, 0, SEEK_END);
     long size = ftell(fptr);
     if(size < 0){
         printf("ftell error\n");
+        fclose(fptr);
         return;
     }
 
@@ -396,6 +407,8 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
             }
             if(buffer)
                 free(buffer);
+            if(msg->data)
+                free(msg->data);
             free(msg);
         }
     } 
@@ -418,6 +431,8 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     }
     if(buffer)
         free(buffer);
+    if(msg->data)
+        free(msg->data);
     free(msg);
     fprintf(stderr,"ENDING\n");
     msg = create_message(0, TYPE_END, global_sequence.value, NULL);
@@ -442,8 +457,10 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     
     if (buffer)
         free(buffer);
+    if(msg->data)
+            free(msg->data);
     free(msg);
-        fclose(fptr);
+    fclose(fptr);
 }
 
 int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq) 
@@ -575,6 +592,8 @@ void wait_file(int fd, uint32_t ifindex, int type, char* fileName){
         setsid();
 
         execlp("xdg-open", "xdg-open", name, (char *)NULL);
+        int status = remove(name);
+        fprintf(stderr,"\n\nremove: %d\n\n",status);
         _exit(EXIT_FAILURE);
     } else if (pid < 0) {
         perror("Erro ao abrir arquivo recebido");
@@ -595,13 +614,27 @@ char* wait_map(int fd, uint32_t ifindex){
         result = handle_listen_result(fd, ifindex, raw_type, &received_msg, global_sequence.value);
         fprintf(stderr,"result in wait: %d\n", result);
         if(result == TYPE_DATA){
-            fprintf(stderr, "Recieved DATA\n");
+            fprintf(stderr, "Received DATA\n");
             size += received_msg.size;
             fprintf(stderr, "REALLOC map size:%d\n", size);
             map_view = realloc(map_view, size*sizeof(char));
             memcpy(map_view+size-received_msg.size, received_msg.data, received_msg.size);
+            free(received_msg.data);
         }
     }
     fprintf(stderr,"recieved END\n");
     return map_view;
+}
+void end_game(int fd, uint32_t ifindex){
+    struct message *msg = create_message(0, TYPE_FINISH, global_sequence.value, NULL);
+    size_t final_size;
+    uint8_t *buffer = serialize_message(msg, &final_size);
+    
+    if (buffer) {
+        printf("FINISH ");
+        send_message(fd, ifindex, buffer, &final_size);
+        free(buffer);
+    }
+    
+    free(msg);
 }

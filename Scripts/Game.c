@@ -19,7 +19,7 @@ void init_pastilhas(GameState* game){
             int randy = rand() % 40;
             if(game->grid[randx][randy] == '0'){
                 game->grid[randx][randy] = pastilha;
-                placed = 0;
+                placed = 1;
             }
         }
     }
@@ -86,9 +86,11 @@ int load_map_from_csv(GameState *game, const char *filename) {
         fprintf(stderr, "gerando pacman\n");
         int randx = rand()%40;
         int randy = rand()%40;
+        fprintf(stderr, "[%d][%d] = %c",randx, randy,game->grid[randx][randy]);
         if(game->grid[randx][randy] == '0'){
-            init_ghost(&game->red, randx, randy, rand()%4);
-            game->grid[game->red.x][game->red.y] = 'R';
+            game->pacman_x = randx;
+            game->pacman_y = randy;
+            game->grid[randx][randy] = 'P';
         }
     }
     while(game->red.x == -1){

@@ -75,9 +75,10 @@ int main(int argc, char *argv[])
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
                 fprintf(stderr, "resultado: %d\n",result);
                 if(result == TYPE_JPG || result == TYPE_TXT || result == TYPE_MP4){
-                    
                     wait_file(file_desc, ifindex, result, (char*)received_msg.data);
                     free_message_data(&received_msg);
+                } else if(result == TYPE_FINISH){
+                    return 0;
                 }
                 fprintf(stderr,"esperando visual type\n");
             }
@@ -220,9 +221,13 @@ int main(int argc, char *argv[])
                 } else if(status == 5 || status == 6){
                     send_file(file_desc, ifindex, name, TYPE_MP4);
                 } else if(status == 8){
-                    send_file(file_desc, ifindex, "linuxLogo", TYPE_JPG);
+                    send_file(file_desc, ifindex, "dead", TYPE_JPG);
                 }
-
+                if(game.pills_collected == 6){
+                    send_file(file_desc, ifindex, "end", TYPE_JPG);
+                    end_game(file_desc, ifindex);
+                    return 0;
+                }
                 update_map(&game);
                 server_print_map(&game);
             }

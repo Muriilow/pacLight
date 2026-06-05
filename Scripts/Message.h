@@ -22,7 +22,7 @@
 #define TYPE_UP 13
 #define TYPE_ERROR 15 
 #define TYPE_EXIT 16 
-#define TYPE_ASK 17
+#define TYPE_FINISH 17
 
 #define MAX_DATA 31
 
@@ -59,5 +59,6 @@ uint8_t crc8_bitwise(const uint8_t *data, size_t size);
 int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq);
 void wait_file(int fd, uint32_t ifindex, int type, char* name);
 char* wait_map(int fd, uint32_t ifindex);
+void end_game(int fd, uint32_t ifindex);
 
 #endif
