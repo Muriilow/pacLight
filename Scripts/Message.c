@@ -76,7 +76,7 @@ char* name_handle(char* name, int type){
             return NULL;
     }
     
-    fprintf(stderr, "%s", final);
+    //fprintf(stderr, "%s", final);
     return final;
 }
 
@@ -137,7 +137,7 @@ void send_ack(int fd, uint32_t ifindex, uint8_t seq) {
     size_t final_size;
     uint8_t *buffer = serialize_message(msg, &final_size);
     if (buffer) {
-        printf("ACK ");
+        //printf("ACK ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }
@@ -149,7 +149,7 @@ void send_nack(int fd, uint32_t ifindex, uint8_t seq) {
     size_t final_size;
     uint8_t *buffer = serialize_message(msg, &final_size);
     if (buffer) {
-        printf("NACK ");
+        //printf("NACK ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }
@@ -196,7 +196,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
 
     while(result != TYPE_ACK)
     {   
-        printf("VIS ");
+        //printf("VIS ");
         send_message(fd, ifindex, buffer, &final_size);
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
@@ -211,9 +211,9 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     if(msg->data)
         free(msg->data);
     free(msg);
-    fprintf(stderr,"total size: %d\n", total_size);
+    //fprintf(stderr,"total size: %d\n", total_size);
     for(i = 0; i < total_size - total_size%MAX_DATA; i+=MAX_DATA){
-        fprintf(stderr,"i: %d \n", i);
+        //fprintf(stderr,"i: %d \n", i);
         char visible_grid_seg[MAX_DATA];
         memcpy(visible_grid_seg, &visible_grid[i], MAX_DATA);
         msg = create_message(MAX_DATA, TYPE_DATA, global_sequence.value, visible_grid_seg);
@@ -221,7 +221,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
 
         result = -4;
         while(result != TYPE_ACK){
-            printf("MAP ");
+            //printf("MAP ");
             send_message(fd, ifindex, buffer, &final_size);
             raw_type = listener_mode(fd, &ack_addr);
             result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
@@ -240,7 +240,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         buffer = serialize_message(msg, &final_size);
         result = -4;
         while(result != TYPE_ACK){
-            printf("LAST MAP ");
+            //printf("LAST MAP ");
             send_message(fd, ifindex, buffer, &final_size);
             raw_type = listener_mode(fd, &ack_addr);
             result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
@@ -260,7 +260,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     result = -4;
     while(result != TYPE_ACK)
     {   
-        printf("END ");
+        //printf("END ");
         send_message(fd, ifindex, buffer, &final_size);
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
@@ -273,7 +273,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     if (buffer)
         free(buffer);
     free(msg);
-    fprintf(stderr, "ACK RECEBIDO\n");
+    //fprintf(stderr, "ACK RECEBIDO\n");
 }
 
 void send_up(int fd, uint32_t ifindex)
@@ -283,7 +283,7 @@ void send_up(int fd, uint32_t ifindex)
     uint8_t *buffer = serialize_message(msg, &final_size);
     
     if (buffer) {
-        printf("UP  ");
+        //printf("UP  ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }
@@ -297,7 +297,7 @@ void send_down(int fd, uint32_t ifindex)
     uint8_t *buffer = serialize_message(msg, &final_size);
     
     if (buffer) {
-        printf("DOW ");
+        //printf("DOW ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }
@@ -311,7 +311,7 @@ void send_left(int fd, uint32_t ifindex)
     uint8_t *buffer = serialize_message(msg, &final_size);
     
     if (buffer) {
-        printf("LEF ");
+        //printf("LEF ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }
@@ -325,7 +325,7 @@ void send_right(int fd, uint32_t ifindex)
     uint8_t *buffer = serialize_message(msg, &final_size);
     
     if (buffer) {
-        printf("RIG ");
+        //printf("RIG ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }
@@ -380,7 +380,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     fseek(fptr, 0, SEEK_SET);
     uint32_t seg_size;
     for(long i = 0; i < size - size%MAX_DATA; i += MAX_DATA){
-        fprintf(stderr,"envio: %8.5f\n",(float)i/(float)size*100);
+        //fprintf(stderr,"envio: %8.5f\n",(float)i/(float)size*100);
         char file_data[MAX_DATA];
         seg_size = (uint32_t) fread(file_data, 1, MAX_DATA, fptr);
         if (seg_size != MAX_DATA){
@@ -394,7 +394,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
             result = -4;
             while(result != TYPE_ACK)
             {
-                printf("DATA %d ", global_sequence.value);
+                //printf("DATA %d ", global_sequence.value);
                 send_message(fd, ifindex, buffer, &final_size);
                 raw_type = listener_mode(fd, &ack_addr);
                 result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
@@ -419,7 +419,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     result = -4;
     while(result != TYPE_ACK)
     {   
-        printf("DATA %d ", global_sequence.value);
+        //printf("DATA %d ", global_sequence.value);
         send_message(fd, ifindex, buffer, &final_size);
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
@@ -434,20 +434,20 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     if(msg->data)
         free(msg->data);
     free(msg);
-    fprintf(stderr,"ENDING\n");
+    //fprintf(stderr,"ENDING\n");
     msg = create_message(0, TYPE_END, global_sequence.value, NULL);
     buffer = serialize_message(msg, &final_size);
 
     result = -4;
     while(result != TYPE_ACK)
     {   
-        printf("END ");
+        //printf("END ");
         send_message(fd, ifindex, buffer, &final_size);
         raw_type = listener_mode(fd, &ack_addr);
         result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
 
         if(result == TYPE_ACK){
-            fprintf(stderr, "ACK RECEBIDO\n");
+            //fprintf(stderr, "ACK RECEBIDO\n");
         }
         if(ack_addr.data) {
             free(ack_addr.data);
@@ -522,7 +522,7 @@ uint8_t crc8_bitwise(const uint8_t *data, size_t size) {
 }
 
 void wait_file(int fd, uint32_t ifindex, int type, char* fileName){
-    fprintf(stderr,"Waiting file\n");
+    //fprintf(stderr,"Waiting file\n");
     struct message received_msg = {0};
     int result = -4;
     int raw_type;
@@ -535,7 +535,7 @@ void wait_file(int fd, uint32_t ifindex, int type, char* fileName){
     else if (type == TYPE_MP4)
         snprintf(name, sizeof(name), "%s.mp4", fileName);
 
-    fprintf(stderr,"%s\n",name);
+    //fprintf(stderr,"%s\n",name);
     FILE* new_file = fopen(name, "wb");
     if (new_file == NULL) {
         perror("Erro ao criar arquivo recebido");
@@ -545,7 +545,7 @@ void wait_file(int fd, uint32_t ifindex, int type, char* fileName){
     while(result != TYPE_END){
         raw_type = listener_mode(fd, &received_msg);
         result = handle_listen_result(fd, ifindex, raw_type, &received_msg, global_sequence.value);
-        fprintf(stderr,"result in wait: %d\n", result);
+        //fprintf(stderr,"result in wait: %d\n", result);
         if(result == TYPE_DATA && received_msg.data != NULL)
             fwrite(received_msg.data, 1, received_msg.size, new_file);
 
@@ -592,12 +592,14 @@ void wait_file(int fd, uint32_t ifindex, int type, char* fileName){
         setsid();
 
         execlp("xdg-open", "xdg-open", name, (char *)NULL);
-        int status = remove(name);
-        fprintf(stderr,"\n\nremove: %d\n\n",status);
+        perror("Error deleting file");
+        fprintf(stdout, "\n\nSOCORRO\n\n");
+        fprintf(stderr, "\n\nSOCORRO\n\n");
         _exit(EXIT_FAILURE);
     } else if (pid < 0) {
         perror("Erro ao abrir arquivo recebido");
     }
+    remove(name);
 }
 char* wait_map(int fd, uint32_t ifindex){
     struct message received_msg;
@@ -608,21 +610,21 @@ char* wait_map(int fd, uint32_t ifindex){
     char* map_view = malloc(sizeof(char));
     result = -4;
     //não ta finalizando(devo ter esquecido alguma lógica na finalização)
-    fprintf(stderr, "inside wainting map \n");
+    //fprintf(stderr, "inside wainting map \n");
     while(result != TYPE_END){
         raw_type = listener_mode(fd, &received_msg);
         result = handle_listen_result(fd, ifindex, raw_type, &received_msg, global_sequence.value);
-        fprintf(stderr,"result in wait: %d\n", result);
+        //fprintf(stderr,"result in wait: %d\n", result);
         if(result == TYPE_DATA){
-            fprintf(stderr, "Received DATA\n");
+            //fprintf(stderr, "Received DATA\n");
             size += received_msg.size;
-            fprintf(stderr, "REALLOC map size:%d\n", size);
+            //fprintf(stderr, "REALLOC map size:%d\n", size);
             map_view = realloc(map_view, size*sizeof(char));
             memcpy(map_view+size-received_msg.size, received_msg.data, received_msg.size);
             free(received_msg.data);
         }
     }
-    fprintf(stderr,"recieved END\n");
+    //fprintf(stderr,"recieved END\n");
     return map_view;
 }
 void end_game(int fd, uint32_t ifindex){
@@ -631,7 +633,7 @@ void end_game(int fd, uint32_t ifindex){
     uint8_t *buffer = serialize_message(msg, &final_size);
     
     if (buffer) {
-        printf("FINISH ");
+        //printf("FINISH ");
         send_message(fd, ifindex, buffer, &final_size);
         free(buffer);
     }

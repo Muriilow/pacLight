@@ -76,7 +76,7 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
     if(send_bytes == -1) {
         perror("Erro ao enviar pacote");
     } else {
-        printf("Mensagem %d enviada: %zd bytes na interface %d\n",global_sequence.value, send_bytes, ifindex);
+        //printf("Mensagem %d enviada: %zd bytes na interface %d\n",global_sequence.value, send_bytes, ifindex);
     }
 }
 
@@ -98,7 +98,7 @@ int listener_mode(int32_t fd, struct message *received_msg) {
             uint8_t seq = (uint8_t)(((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F);
             uint8_t type = (buffer[2] >> 3) & 0x1F;
 
-            fprintf(stderr,"type: %d \n", type);
+            //fprintf(stderr,"type: %d \n", type);
             // Popula a estrutura mesmo se o CRC puder falhar, para debug ou uso parcial
             if (received_msg != NULL) {
                 received_msg->start_marker = 126;

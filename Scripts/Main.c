@@ -70,28 +70,28 @@ int main(int argc, char *argv[])
             result = -4;
 
             while (result != TYPE_VISUAL){
-                fprintf(stderr,"waiting visual");
+                //fprintf(stderr,"waiting visual");
                 raw_type = listener_mode(file_desc, &received_msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
-                fprintf(stderr, "resultado: %d\n",result);
+                //fprintf(stderr, "resultado: %d\n",result);
                 if(result == TYPE_JPG || result == TYPE_TXT || result == TYPE_MP4){
                     wait_file(file_desc, ifindex, result, (char*)received_msg.data);
                     free_message_data(&received_msg);
                 } else if(result == TYPE_FINISH){
                     return 0;
                 }
-                fprintf(stderr,"esperando visual type\n");
+                //fprintf(stderr,"esperando visual type\n");
             }
-            fprintf(stderr, "visual recieved  ");
+            //fprintf(stderr, "visual recieved  ");
             //fprintf(stderr, "raio: %d\n" ,(int)received_msg.data);
             if (received_msg.data != NULL && received_msg.size >= sizeof(radius)) {
                 memcpy(&radius, received_msg.data, sizeof(radius));
             }
             free_message_data(&received_msg);
             //fprintf(stderr,"raio: %d", radius);
-            fprintf(stderr,"esperando mapa\n");
+            //fprintf(stderr,"esperando mapa\n");
             map_view = wait_map(file_desc,ifindex);
-            printf("Mapa recebido!\n");
+            //printf("Mapa recebido!\n");
             if (map_view != NULL) {
                 print_game_screen(map_view, radius);
                 free(map_view);
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
                         default:
                             break;
                     }
-                    printf("waiting M_ack\n");
+                    //printf("waiting M_ack\n");
                     raw_type = listener_mode(file_desc, &msg);
                     result = handle_listen_result(file_desc, ifindex, raw_type, &msg, global_sequence.value);
                     free_message_data(&msg);
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
         int raw_type;
         int moved = 1;
 
-        printf("Carregando o mapa!\n");
+        //printf("Carregando o mapa!\n");
         GameState game = {0};
         init_game(&game);
         if (load_map_from_csv(&game, map_filename) != 0)
@@ -165,18 +165,18 @@ int main(int argc, char *argv[])
         int loop_count = 0;
         while(1)
         {   
-            printf("loop: %d\n", loop_count);
+            //printf("loop: %d\n", loop_count);
             loop_count++;
-            fprintf(stderr, "moved: %d\n", moved);
+            //fprintf(stderr, "moved: %d\n", moved);
             if (moved){
-                fprintf(stderr,"SERVER GLOBAL SEQ:%d\n", global_sequence.value);
+                //fprintf(stderr,"SERVER GLOBAL SEQ:%d\n", global_sequence.value);
                 //Envia o mapa e espera o ACK correspondente
                     send_map(file_desc, ifindex, &game);
                 }
                 moved = 0;
             //Esperando comando do player (ja com a nova sequencia)
             result = -4;
-            fprintf(stderr,"GLOBAL SEQ BEFORE MOVE: %d\n",global_sequence.value);
+            //fprintf(stderr,"GLOBAL SEQ BEFORE MOVE: %d\n",global_sequence.value);
             while(result < 10 || result > 13){
                 printf("waiting input\n");
                 raw_type = listener_mode(file_desc, &received_msg);
@@ -186,9 +186,9 @@ int main(int argc, char *argv[])
                 moved = 1;
 
 
-            fprintf(stderr,"GLOBAL SEQ AFTER MOVE: %d\n",global_sequence.value);
+            //fprintf(stderr,"GLOBAL SEQ AFTER MOVE: %d\n",global_sequence.value);
             //Aqui trataremos a logica do jogo (Sequencia ja avancou no final do handle_listen_result)
-            printf("Comando %d recebido!\n", result);
+            //printf("Comando %d recebido!\n", result);
             int direction = -1;
             switch (result)
             {
