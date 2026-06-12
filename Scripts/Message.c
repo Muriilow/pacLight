@@ -380,7 +380,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     fseek(fptr, 0, SEEK_SET);
     uint32_t seg_size;
     for(long i = 0; i < size - size%MAX_DATA; i += MAX_DATA){
-        //fprintf(stderr,"envio: %8.5f\n",(float)i/(float)size*100);
+        fprintf(stderr,"envio: %8.5f\n",(float)i/(float)size*100);
         char file_data[MAX_DATA];
         seg_size = (uint32_t) fread(file_data, 1, MAX_DATA, fptr);
         if (seg_size != MAX_DATA){
@@ -599,10 +599,11 @@ void wait_file(int fd, uint32_t ifindex, int type, char* fileName){
     } else if (pid < 0) {
         perror("Erro ao abrir arquivo recebido");
     }
-    remove(name);
+    sleep(3);
+    //remove(name);
 }
 char* wait_map(int fd, uint32_t ifindex){
-    struct message received_msg;
+    struct message received_msg = {0};
     int result = -4;
     int raw_type;
 
@@ -621,8 +622,11 @@ char* wait_map(int fd, uint32_t ifindex){
             //fprintf(stderr, "REALLOC map size:%d\n", size);
             map_view = realloc(map_view, size*sizeof(char));
             memcpy(map_view+size-received_msg.size, received_msg.data, received_msg.size);
-            free(received_msg.data);
         }
+    }
+    if(received_msg.data){
+        free(received_msg.data);
+        received_msg.data = NULL;
     }
     //fprintf(stderr,"recieved END\n");
     return map_view;
