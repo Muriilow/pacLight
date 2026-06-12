@@ -57,20 +57,20 @@ int load_map_from_csv(GameState *game, const char *filename) {
                 game->pacman_y = row;
             }
             else if (token[0] == 'R') {
-                game->red.x = col;
-                game->red.y = row;
+                game->red.x = row;
+                game->red.y = col;
             }
             else if (token[0] == 'G') {
-                game->green.x = col;
-                game->green.y = row;
+                game->green.x = row;
+                game->green.y = col;
             }
             else if (token[0] == 'B') {
-                game->blue.x = col;
-                game->blue.y = row;
+                game->blue.x = row;
+                game->blue.y = col;
             }
             else if (token[0] == 'Y') {
-                game->yellow.x = col;
-                game->yellow.y = row;
+                game->yellow.x = row;
+                game->yellow.y = col;
             }
             else if (token[0] == '1'){
                 tem_pastilha = 1;
@@ -94,7 +94,7 @@ int load_map_from_csv(GameState *game, const char *filename) {
         }
     }
     while(game->red.x == -1){
-        //fprintf(stderr, "gerando red\n");
+        fprintf(stderr, "gerando red\n");
         int randx = rand()%40;
         int randy = rand()%40;
         if(game->grid[randx][randy] == '0'){
@@ -103,7 +103,7 @@ int load_map_from_csv(GameState *game, const char *filename) {
         }
     }
     while(game->green.x == -1){
-        //fprintf(stderr, "gerando green\n");
+        fprintf(stderr, "gerando green\n");
         int randx = rand()%40;
         int randy = rand()%40;
         if(game->grid[randx][randy] == '0'){
@@ -112,7 +112,7 @@ int load_map_from_csv(GameState *game, const char *filename) {
         }
     }
     while(game->blue.x == -1){
-        //fprintf(stderr, "gerando blue\n");
+        fprintf(stderr, "gerando blue\n");
         int randx = rand()%40;
         int randy = rand()%40;
         if(game->grid[randx][randy] == '0'){
@@ -121,7 +121,7 @@ int load_map_from_csv(GameState *game, const char *filename) {
         }
     }
     while(game->yellow.x == -1){
-        //fprintf(stderr, "gerando yellow\n");
+        fprintf(stderr, "gerando yellow\n");
         int randx = rand()%40;
         int randy = rand()%40;
         if(game->grid[randx][randy] == '0'){
@@ -162,7 +162,7 @@ void get_visible_map(GameState *game, char *buffer, int *size) {
 }
 
 void print_game_screen(const char *visible_grid, int radius) {
-    //printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
+    printf("\033[H\033[J"); // Limpa a tela e move o cursor para o topo
     printf("PacLight - Visão: %d\n\n", radius);
     int k = 0;
     // Itera no bounding box, mas desenha apenas o que está no raio de Manhattan
@@ -199,16 +199,32 @@ int handle_move(GameState *game, uint16_t direction)
     switch (direction)
     {
         case 0:
-            next_x--;
+            if(next_x <= 0){
+                game->move_count--;
+                return 0;
+            }else
+                next_x--;
             break;
         case 1:
-            next_x++;
+            if(next_x >= 39){
+                game->move_count--;
+                return 0;
+            } else
+                next_x++;
             break;
         case 2:
-            next_y--;
+            if(next_y <= 0){
+                game->move_count--;
+                return 0;
+            } else
+                next_y--;
             break;
         case 3:
-            next_y++;
+            if(next_y >= 39){
+                game->move_count--;
+                return 0;
+            } else
+                next_y++;
             break;
         default:
             game->visibility_radius = INITIAL_VISIBILITY+game->move_count/VISIBILITY_INCREMENT_INTERVAL;
@@ -260,11 +276,11 @@ void update_map(GameState *game)
     return;
 }
 void moveghosts(GameState* game){
-    //0 = up, 1 = right, 2 down, 3 left
+    //0 = up, 1 = right, 2 = down, 3 = left
     switch (game->red.direction){
         case 0:
             //fprintf(stderr,"RED UP \n");
-            if (game->grid[game->red.x-1][game->red.y] == '0'){
+            if ((game->red.x != 0) && (game->grid[game->red.x-1][game->red.y] == '0')){
                 game->grid[game->red.x-1][game->red.y] = 'R';
                 game->grid[game->red.x][game->red.y] = '0';
                 game->red.x--;
@@ -274,7 +290,7 @@ void moveghosts(GameState* game){
         break;
         case 1:
             //fprintf(stderr,"RED RIG\n");
-            if (game->grid[game->red.x][game->red.y+1] == '0'){
+            if (game->red.y != 39 && game->grid[game->red.x][game->red.y+1] == '0'){
                 game->grid[game->red.x][game->red.y+1] = 'R';
                 game->grid[game->red.x][game->red.y] = '0';
                 game->red.y++;
@@ -284,7 +300,7 @@ void moveghosts(GameState* game){
         break;
         case 2:
             //fprintf(stderr,"RED DOW\n");
-            if (game->grid[game->red.x+1][game->red.y] == '0'){
+            if (game->red.x != 39 && game->grid[game->red.x+1][game->red.y] == '0'){
                 game->grid[game->red.x+1][game->red.y] = 'R';
                 game->grid[game->red.x][game->red.y] = '0';
                 game->red.x++;
@@ -294,7 +310,7 @@ void moveghosts(GameState* game){
         break;
         case 3:
             //fprintf(stderr,"RED LEF\n");
-            if (game->grid[game->red.x][game->red.y-1] == '0'){
+            if (game->red.y != 0 && game->grid[game->red.x][game->red.y-1] == '0'){
                 game->grid[game->red.x][game->red.y-1] = 'R';
                 game->grid[game->red.x][game->red.y] = '0';
                 game->red.y--;
@@ -303,10 +319,11 @@ void moveghosts(GameState* game){
             }
         break;
     }
+    fprintf(stderr,"RED %d, %d\n", game->red.x, game->red.y);
     switch (game->blue.direction){
         case 0:
             //fprintf(stderr,"BLUE UP \n");
-            if (game->grid[game->blue.x-1][game->blue.y] == '0'){
+            if (game->blue.x != 0 && game->grid[game->blue.x-1][game->blue.y] == '0'){
                 game->grid[game->blue.x-1][game->blue.y] = 'B';
                 game->grid[game->blue.x][game->blue.y] = '0';
                 game->blue.x--;
@@ -316,7 +333,7 @@ void moveghosts(GameState* game){
         break;
         case 1:
             //fprintf(stderr,"BLUE RIG\n");
-            if (game->grid[game->blue.x][game->blue.y+1] == '0'){
+            if (game->blue.y != 39 && game->grid[game->blue.x][game->blue.y+1] == '0'){
                 game->grid[game->blue.x][game->blue.y+1] = 'B';
                 game->grid[game->blue.x][game->blue.y] = '0';
                 game->blue.y++;
@@ -326,7 +343,7 @@ void moveghosts(GameState* game){
         break;
         case 2:
             //fprintf(stderr,"BLUE DOW\n");
-            if (game->grid[game->blue.x+1][game->blue.y] == '0'){
+            if (game->blue.x != 39 && game->grid[game->blue.x+1][game->blue.y] == '0'){
                 game->grid[game->blue.x+1][game->blue.y] = 'B';
                 game->grid[game->blue.x][game->blue.y] = '0';
                 game->blue.x++;
@@ -336,7 +353,7 @@ void moveghosts(GameState* game){
         break;
         case 3:
             //fprintf(stderr,"BLUE LEF\n");
-            if (game->grid[game->blue.x][game->blue.y-1] == '0'){
+            if (game->blue.y != 0 && game->grid[game->blue.x][game->blue.y-1] == '0'){
                 game->grid[game->blue.x][game->blue.y-1] = 'B';
                 game->grid[game->blue.x][game->blue.y] = '0';
                 game->blue.y--;
@@ -348,7 +365,7 @@ void moveghosts(GameState* game){
     switch (rand()%4){
         case 0:
             //fprintf(stderr,"YELLOW UP \n");
-            if (game->grid[game->yellow.x-1][game->yellow.y] == '0'){
+            if (game->yellow.x != 0 && game->grid[game->yellow.x-1][game->yellow.y] == '0'){
                 game->grid[game->yellow.x-1][game->yellow.y] = 'Y';
                 game->grid[game->yellow.x][game->yellow.y] = '0';
                 game->yellow.x--;
@@ -356,7 +373,7 @@ void moveghosts(GameState* game){
         break;
         case 1:
             //fprintf(stderr,"YELLOW RIG\n");
-            if (game->grid[game->yellow.x][game->yellow.y+1] == '0'){
+            if (game->yellow.y != 39 && game->grid[game->yellow.x][game->yellow.y+1] == '0'){
                 game->grid[game->yellow.x][game->yellow.y+1] = 'Y';
                 game->grid[game->yellow.x][game->yellow.y] = '0';
                 game->yellow.y++;
@@ -364,7 +381,7 @@ void moveghosts(GameState* game){
         break;
         case 2:
             //fprintf(stderr,"YELLOW DOW\n");
-            if (game->grid[game->yellow.x+1][game->yellow.y] == '0'){
+            if (game->yellow.x != 39 && game->grid[game->yellow.x+1][game->yellow.y] == '0'){
                 game->grid[game->yellow.x+1][game->yellow.y] = 'Y';
                 game->grid[game->yellow.x][game->yellow.y] = '0';
                 game->yellow.x++;
@@ -372,7 +389,7 @@ void moveghosts(GameState* game){
         break;
         case 3:
             //fprintf(stderr,"YELLOW LEF\n");
-            if (game->grid[game->yellow.x][game->yellow.y-1] == '0'){
+            if (game->yellow.y != 0 && game->grid[game->yellow.x][game->yellow.y-1] == '0'){
                 game->grid[game->yellow.x][game->yellow.y-1] = 'Y';
                 game->grid[game->yellow.x][game->yellow.y] = '0';
                 game->yellow.y--;
@@ -382,7 +399,7 @@ void moveghosts(GameState* game){
     switch (game->green.direction){
         case 0:
             //fprintf(stderr,"GREEN UP \n");
-            if (game->grid[game->green.x-1][game->green.y] == '0'){
+            if (game->green.x != 0 && game->grid[game->green.x-1][game->green.y] == '0'){
                 game->grid[game->green.x-1][game->green.y] = 'G';
                 game->grid[game->green.x][game->green.y] = '0';
                 game->green.x--;
@@ -393,7 +410,7 @@ void moveghosts(GameState* game){
         break;
         case 1:
             //fprintf(stderr,"GREEN RIG\n");
-            if (game->grid[game->green.x][game->green.y+1] == '0'){
+            if (game->green.y != 39 && game->grid[game->green.x][game->green.y+1] == '0'){
                 game->grid[game->green.x][game->green.y+1] = 'G';
                 game->grid[game->green.x][game->green.y] = '0';
                 game->green.y++;
@@ -404,7 +421,7 @@ void moveghosts(GameState* game){
         break;
         case 2:
             //fprintf(stderr,"GREEN DOW\n");
-            if (game->grid[game->green.x+1][game->green.y] == '0'){
+            if (game->green.x != 39 && game->grid[game->green.x+1][game->green.y] == '0'){
                 game->grid[game->green.x+1][game->green.y] = 'G';
                 game->grid[game->green.x][game->green.y] = '0';
                 game->green.x++;
@@ -415,7 +432,7 @@ void moveghosts(GameState* game){
         break;
         case 3:
             //fprintf(stderr,"GREEN LEF\n");
-            if (game->grid[game->green.x][game->green.y-1] == '0'){
+            if (game->green.y != 0 && game->grid[game->green.x][game->green.y-1] == '0'){
                 game->grid[game->green.x][game->green.y-1] = 'G';
                 game->grid[game->green.x][game->green.y] = '0';
                 game->green.y--;
