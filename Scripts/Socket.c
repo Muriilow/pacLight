@@ -52,8 +52,8 @@ int create_raw_socket(uint32_t ifindex) {
     }
 
     struct timeval tv;
-    tv.tv_sec = 2; 
-    tv.tv_usec = (2)*1000;
+    tv.tv_sec = 1; 
+    tv.tv_usec = 300;
     status = setsockopt(pac_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     if(status < 0) {
         fprintf(stderr, "Erro ao setar tempo de espera do socket! {create_raw_socket}\n");
@@ -76,7 +76,7 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
     if(send_bytes == -1) {
         perror("Erro ao enviar pacote");
     } else {
-        //printf("Mensagem %d enviada: %zd bytes na interface %d\n",global_sequence.value, send_bytes, ifindex);
+        fprintf(stderr,"Mensagem %d enviada: %zd bytes na interface %d\n",global_sequence.value, send_bytes, ifindex);
     }
 }
 

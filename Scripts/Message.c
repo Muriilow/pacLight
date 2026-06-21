@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <sys/wait.h>
+#include <sys/inotify.h>
 
 //ir para a linah 132
 struct global_sequence global_sequence = {0};
@@ -596,14 +598,27 @@ void wait_file(int fd, uint32_t ifindex, int type, char* fileName){
         fprintf(stdout, "\n\nSOCORRO\n\n");
         fprintf(stderr, "\n\nSOCORRO\n\n");
         _exit(EXIT_FAILURE);
-    } else if (pid < 0) {
+    } else if (pid > 0) {
+        waitpid(pid, NULL, 0);
+        char command[256];
+        // Usa o comando fuser para ver se o arquivo está sendo usado em qualquer aplicativo 
+        snprintf(command, sizeof(command), "fuser -s %s", name);
+
+        // Sleep para dar tempo ao xdg-open
+        sleep(3); 
+
+        // enquanto o arquivo estiver aberto por qualquer processo ele não será excluido, testa a cada segundo
+        while (system(command) == 0) {
+            sleep(1);   
+        }
+        remove(name);
+
+    } else {
         perror("Erro ao abrir arquivo recebido");
     }
-    sleep(3);
-    //remove(name);
 }
 char* wait_map(int fd, uint32_t ifindex){
-    struct message received_msg = {0};
+    struct message received_msg;
     int result = -4;
     int raw_type;
 
@@ -623,10 +638,10 @@ char* wait_map(int fd, uint32_t ifindex){
             map_view = realloc(map_view, size*sizeof(char));
             memcpy(map_view+size-received_msg.size, received_msg.data, received_msg.size);
         }
-    }
-    if(received_msg.data){
-        free(received_msg.data);
-        received_msg.data = NULL;
+        if(received_msg.data){
+            free(received_msg.data);
+            received_msg.data = NULL;
+        }
     }
     //fprintf(stderr,"recieved END\n");
     return map_view;
