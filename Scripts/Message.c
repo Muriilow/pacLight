@@ -392,7 +392,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     fseek(fptr, 0, SEEK_SET);
     uint32_t seg_size;
     for(long i = 0; i < size - size%MAX_DATA; i += MAX_DATA){
-        fprintf(stderr,"envio: %8.5f\n",(float)i/(float)size*100);
+        //fprintf(stderr,"envio: %8.5f\n",(float)i/(float)size*100);
         char file_data[MAX_DATA];
         seg_size = (uint32_t) fread(file_data, 1, MAX_DATA, fptr);
         if (seg_size != MAX_DATA){
@@ -477,7 +477,7 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
 
     if (listen_return == LISTEN_CRC_ERROR) 
     {
-        fprintf(stderr, "ERRO DE CRC\n");
+        //fprintf(stderr, "ERRO DE CRC\n");
         send_nack(fd, ifindex, expected_seq);
         return listen_return;
     }
@@ -498,10 +498,10 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
     {
         // Se a sequência for menor, o outro lado pode não ter recebido nosso ACK anterior
         if (received_msg->sequence < expected_seq){
-            fprintf(stderr, "ERRO DE SEQUENCIA - Recebido:%d Esperado:%d\n",received_msg->sequence, expected_seq);
+            //fprintf(stderr, "ERRO DE SEQUENCIA - Recebido:%d Esperado:%d\n",received_msg->sequence, expected_seq);
             send_ack(fd, ifindex, received_msg->sequence);
         }else{
-            fprintf(stderr, "ERRO DE SEQUENCIA - Recebido:%d Esperado:%d\n",received_msg->sequence, expected_seq);
+            //fprintf(stderr, "ERRO DE SEQUENCIA - Recebido:%d Esperado:%d\n",received_msg->sequence, expected_seq);
             send_nack(fd, ifindex, expected_seq);
         } 
         return LISTEN_SEQ_ERROR;
@@ -599,9 +599,9 @@ void wait_file(int fd, uint32_t ifindex, int type, char* fileName){
         setsid();
 
         execlp("xdg-open", "xdg-open", name, (char *)NULL);
-        perror("Error deleting file");
-        fprintf(stdout, "\n\nSOCORRO\n\n");
-        fprintf(stderr, "\n\nSOCORRO\n\n");
+        //perror("Error deleting file");
+        //fprintf(stdout, "\n\nSOCORRO\n\n");
+        //fprintf(stderr, "\n\nSOCORRO\n\n");
         _exit(EXIT_FAILURE);
     } else if (pid > 0) {
         waitpid(pid, NULL, 0);

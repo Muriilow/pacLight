@@ -156,7 +156,7 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
     if(send_bytes == -1) {
         perror("Erro ao enviar pacote");
     } else {
-        fprintf(stderr,"Mensagem %d enviada: %zd bytes na interface %d\n",global_sequence.value, send_bytes, ifindex);
+        //fprintf(stderr,"Mensagem %d enviada: %zd bytes na interface %d\n",global_sequence.value, send_bytes, ifindex);
         log_frame("TX", ifindex, message, *final_size, send_bytes);
     }
 }
@@ -204,9 +204,9 @@ int listener_mode(int32_t fd, struct message *received_msg) {
 
             size_t crc_index = 3 + escaped_size;
             if (decoded_size != size || crc_index >= (size_t)bytes_lidos) {
-                fprintf(stderr, "pacote incompleto debug: bytes_lidos=%zd size=%u escaped_size=%zu decoded_size=%u crc_index=%zu\n",
-                        bytes_lidos, size, escaped_size, decoded_size, crc_index);
-                printf("Erro: pacote incompleto.\n");
+                //fprintf(stderr, "pacote incompleto debug: bytes_lidos=%zd size=%u escaped_size=%zu decoded_size=%u crc_index=%zu\n",
+                //        bytes_lidos, size, escaped_size, decoded_size, crc_index);
+                //printf("Erro: pacote incompleto.\n");
                 return LISTEN_CRC_ERROR;
             }
 
@@ -227,7 +227,7 @@ int listener_mode(int32_t fd, struct message *received_msg) {
 
             // Verifica CRC sobre a mensagem reconstruída, sem bytes de escape.
             if (crc8_bitwise(normal_frame, (size_t)(3 + size)) != normal_frame[3 + size]) {
-                printf("Erro: CRC inválido.\n");
+                //printf("Erro: CRC inválido.\n");
                 return LISTEN_CRC_ERROR;
             }
 

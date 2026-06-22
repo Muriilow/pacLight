@@ -94,7 +94,7 @@ int load_map_from_csv(GameState *game, const char *filename) {
         }
     }
     while(game->red.x == -1){
-        fprintf(stderr, "gerando red\n");
+        //fprintf(stderr, "gerando red\n");
         int randx = rand()%40;
         int randy = rand()%40;
         if(game->grid[randx][randy] == '0'){
@@ -103,7 +103,7 @@ int load_map_from_csv(GameState *game, const char *filename) {
         }
     }
     while(game->green.x == -1){
-        fprintf(stderr, "gerando green\n");
+        //fprintf(stderr, "gerando green\n");
         int randx = rand()%40;
         int randy = rand()%40;
         if(game->grid[randx][randy] == '0'){
@@ -112,7 +112,7 @@ int load_map_from_csv(GameState *game, const char *filename) {
         }
     }
     while(game->blue.x == -1){
-        fprintf(stderr, "gerando blue\n");
+        //fprintf(stderr, "gerando blue\n");
         int randx = rand()%40;
         int randy = rand()%40;
         if(game->grid[randx][randy] == '0'){
@@ -121,7 +121,7 @@ int load_map_from_csv(GameState *game, const char *filename) {
         }
     }
     while(game->yellow.x == -1){
-        fprintf(stderr, "gerando yellow\n");
+        //fprintf(stderr, "gerando yellow\n");
         int randx = rand()%40;
         int randy = rand()%40;
         if(game->grid[randx][randy] == '0'){
@@ -256,7 +256,7 @@ int handle_move(GameState *game, uint16_t direction)
             return 8;
         default:
             if (direction == 3) {
-                printf("y+1 = %c\n", game->grid[next_x][next_y]);
+                //printf("y+1 = %c\n", game->grid[next_x][next_y]);
             }
             game->grid[game->pacman_x][game->pacman_y] = '.';
             game->grid[next_x][next_y] = 'P';
@@ -319,7 +319,7 @@ void moveghosts(GameState* game){
             }
         break;
     }
-    fprintf(stderr,"RED %d, %d\n", game->red.x, game->red.y);
+    //fprintf(stderr,"RED %d, %d\n", game->red.x, game->red.y);
     switch (game->blue.direction){
         case 0:
             //fprintf(stderr,"BLUE UP \n");

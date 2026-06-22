@@ -27,6 +27,16 @@ static void free_message_data(struct message *msg)
     }
 }
 
+static void print_usage(const char *program_name)
+{
+    printf("Uso: %s -a [server|player] [-i interface] [-m mapa.csv] [-l log_tty]\n", program_name);
+    printf("Exemplos:\n");
+    printf("  %s -a server -i lo -m Assets/mapa.csv -l /dev/pts/4\n", program_name);
+    printf("  %s -a server -l /dev/pts/4\n", program_name);
+    printf("  %s -a player -i lo\n", program_name);
+    printf("Compatibilidade: %s [server|player] [interface] [mapa.csv] [log_tty]\n", program_name);
+}
+
 Moves stringToEnum(char *str) {
     if (strcasecmp(str, "w") == 0) return MOVE_UP;
     if (strcasecmp(str, "s") == 0) return MOVE_DOWN;
@@ -38,18 +48,59 @@ Moves stringToEnum(char *str) {
 
 int main(int argc, char *argv[])
 {
-    if (argc < 2)
+    const char *mode = NULL;
+    const char *interface = "lo";
+    const char *map_filename = "Assets/mapa_padrao.csv";
+    const char *server_log_tty = NULL;
+    struct message received_msg = {0};
+    int option;
+
+    while ((option = getopt(argc, argv, "a:i:m:l:h")) != -1)
     {
-        printf("Uso: %s [server|player] [interface] [mapa.csv] [log_tty]\n", argv[0]);
-        printf("Exemplo com log do servidor: %s server lo Assets/mapa.csv /dev/pts/4\n", argv[0]);
-        return 1; 
+        switch (option)
+        {
+            case 'a':
+                mode = optarg;
+                break;
+            case 'i':
+                interface = optarg;
+                break;
+            case 'm':
+                map_filename = optarg;
+                break;
+            case 'l':
+                server_log_tty = optarg;
+                break;
+            case 'h':
+                print_usage(argv[0]);
+                return 0;
+            default:
+                print_usage(argv[0]);
+                return 1;
+        }
     }
 
-    char *mode = argv[1];
-    char *interface = (argc > 2) ? argv[2] : "lo";
-    const char *map_filename = (argc > 3) ? argv[3] : "Assets/mapa_padrao.csv";
-    const char *server_log_tty = (argc > 4) ? argv[4] : NULL;
-    struct message received_msg = {0};
+    if (mode == NULL && optind < argc)
+        mode = argv[optind++];
+    if (optind < argc)
+        interface = argv[optind++];
+    if (optind < argc)
+        map_filename = argv[optind++];
+    if (optind < argc)
+        server_log_tty = argv[optind++];
+
+    if (optind < argc)
+    {
+        fprintf(stderr, "Argumento extra: %s\n", argv[optind]);
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    if (mode == NULL || (strcmp(mode, "server") != 0 && strcmp(mode, "player") != 0))
+    {
+        print_usage(argv[0]);
+        return 1;
+    }
 
     uint32_t ifindex = if_nametoindex(interface);
     int32_t file_desc = create_raw_socket(ifindex);
@@ -173,11 +224,11 @@ int main(int argc, char *argv[])
         server_print_map(&game);
         printf("Iniciando o servidor!\n");
 
-        int loop_count = 0;
+        //int loop_count = 0;
         while(1)
         {   
             //printf("loop: %d\n", loop_count);
-            loop_count++;
+            //loop_count++;
             //fprintf(stderr, "moved: %d\n", moved);
             if (moved){
                 //fprintf(stderr,"SERVER GLOBAL SEQ:%d\n", global_sequence.value);
@@ -189,7 +240,7 @@ int main(int argc, char *argv[])
             result = -4;
             //fprintf(stderr,"GLOBAL SEQ BEFORE MOVE: %d\n",global_sequence.value);
             while(result < 10 || result > 13){
-                printf("waiting input\n");
+                //printf("waiting input\n");
                 raw_type = listener_mode(file_desc, &received_msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
                 free_message_data(&received_msg);
