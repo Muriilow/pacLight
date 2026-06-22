@@ -11,6 +11,14 @@
 //ir para a linah 132
 struct global_sequence global_sequence = {0};
 
+static void free_message_data(struct message *msg)
+{
+    if (msg != NULL && msg->data != NULL) {
+        free(msg->data);
+        msg->data = NULL;
+    }
+}
+
 uint32_t prepare_data(const char* data, uint32_t size, char* updated_data){
     if(data == NULL || updated_data == NULL)
         return 0;
@@ -189,7 +197,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     
     int result = -4;
     int raw_type;
-    struct message ack_addr;
+    struct message ack_addr = {0};
     uint32_t i;
     int vision = game->visibility_radius;
     struct message *msg = create_message(sizeof(vision), TYPE_VISUAL, global_sequence.value, &vision);
@@ -227,6 +235,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
             send_message(fd, ifindex, buffer, &final_size);
             raw_type = listener_mode(fd, &ack_addr);
             result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+            free_message_data(&ack_addr);
         }
 
         if (buffer)
@@ -246,6 +255,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
             send_message(fd, ifindex, buffer, &final_size);
             raw_type = listener_mode(fd, &ack_addr);
             result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+            free_message_data(&ack_addr);
         }
 
         if (buffer)
@@ -343,7 +353,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     }
     int result = -4;
     int raw_type;
-    struct message ack_addr;
+    struct message ack_addr = {0};
 
     struct message *msg = create_message(n_size, type, global_sequence.value, name);
     size_t final_size;
@@ -400,12 +410,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
                 send_message(fd, ifindex, buffer, &final_size);
                 raw_type = listener_mode(fd, &ack_addr);
                 result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
-
-                if(ack_addr.data)
-                    continue;
-
-                free(ack_addr.data);
-                ack_addr.data = NULL;
+                free_message_data(&ack_addr);
             }
             if(buffer)
                 free(buffer);
@@ -618,7 +623,7 @@ void wait_file(int fd, uint32_t ifindex, int type, char* fileName){
     }
 }
 char* wait_map(int fd, uint32_t ifindex){
-    struct message received_msg;
+    struct message received_msg = {0};
     int result = -4;
     int raw_type;
 

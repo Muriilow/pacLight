@@ -47,8 +47,7 @@ int main(int argc, char *argv[])
     char *mode = argv[1];
     char *interface = (argc > 2) ? argv[2] : "lo";
     const char *map_filename = (argc > 3) ? argv[3] : "Assets/mapa_padrao.csv";
-    struct message received_msg;
-    received_msg.data = NULL;
+    struct message received_msg = {0};
 
     uint32_t ifindex = if_nametoindex(interface);
     int32_t file_desc = create_raw_socket(ifindex);
@@ -56,8 +55,7 @@ int main(int argc, char *argv[])
     if(strcmp(mode, "player") == 0)
     {
         printf("Iniciando o jogador! Aguardando mapa inicial...\n");
-        struct message msg;
-        msg.data = NULL;
+        struct message msg = {0};
         int result = -4;
         int raw_type;
         char command[20];
@@ -78,7 +76,12 @@ int main(int argc, char *argv[])
                     wait_file(file_desc, ifindex, result, (char*)received_msg.data);
                     free_message_data(&received_msg);
                 } else if(result == TYPE_FINISH){
+                    free_message_data(&received_msg);
+                    free_message_data(&msg);
+                    close(file_desc);
                     return 0;
+                } else if(result != TYPE_VISUAL){
+                    free_message_data(&received_msg);
                 }
                 //fprintf(stderr,"esperando visual type\n");
             }
@@ -144,8 +147,7 @@ int main(int argc, char *argv[])
 
     if(strcmp(mode, "server") == 0)
     {
-        struct message received_msg;
-        received_msg.data = NULL;
+        struct message received_msg = {0};
         int result = -4;
         int raw_type;
         int moved = 1;
@@ -226,6 +228,7 @@ int main(int argc, char *argv[])
                 if(game.pills_collected == 6){
                     send_file(file_desc, ifindex, "end", TYPE_JPG);
                     end_game(file_desc, ifindex);
+                    close(file_desc);
                     return 0;
                 }
                 update_map(&game);
