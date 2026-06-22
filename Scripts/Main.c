@@ -40,13 +40,15 @@ int main(int argc, char *argv[])
 {
     if (argc < 2)
     {
-        printf("Uso: %s [server|player] [interface] [mapa.csv]\n", argv[0]);
+        printf("Uso: %s [server|player] [interface] [mapa.csv] [log_tty]\n", argv[0]);
+        printf("Exemplo com log do servidor: %s server lo Assets/mapa.csv /dev/pts/4\n", argv[0]);
         return 1; 
     }
 
     char *mode = argv[1];
     char *interface = (argc > 2) ? argv[2] : "lo";
     const char *map_filename = (argc > 3) ? argv[3] : "Assets/mapa_padrao.csv";
+    const char *server_log_tty = (argc > 4) ? argv[4] : NULL;
     struct message received_msg = {0};
 
     uint32_t ifindex = if_nametoindex(interface);
@@ -152,12 +154,19 @@ int main(int argc, char *argv[])
         int raw_type;
         int moved = 1;
 
+        if (open_message_log_tty(server_log_tty) != 0)
+        {
+            close(file_desc);
+            return 1;
+        }
+
         //printf("Carregando o mapa!\n");
         GameState game = {0};
         init_game(&game);
         if (load_map_from_csv(&game, map_filename) != 0)
         {
             fprintf(stderr, "Erro ao carregar o mapa em %s\n", map_filename);
+            close_message_log_tty();
             close(file_desc);
             return 1;
         }
@@ -228,6 +237,7 @@ int main(int argc, char *argv[])
                 if(game.pills_collected == 6){
                     send_file(file_desc, ifindex, "end", TYPE_JPG);
                     end_game(file_desc, ifindex);
+                    close_message_log_tty();
                     close(file_desc);
                     return 0;
                 }

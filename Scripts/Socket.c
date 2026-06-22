@@ -1,6 +1,7 @@
 #include <stdlib.h>         // malloc/exit
 #include <string.h>         // memset/memcpy
 #include <unistd.h>         // close()
+#include <fcntl.h>          // open()
 
 // O "Coração" dos Sockets
 #include <sys/socket.h>     // socket(), bind(), sendto()
@@ -16,6 +17,85 @@
 
 // Cabeçalhos locais
 #include "Socket.h"
+
+static int message_log_fd = -1;
+
+static const char *message_type_name(uint8_t type)
+{
+    switch (type) {
+        case TYPE_ACK: return "ACK";
+        case TYPE_NACK: return "NACK";
+        case TYPE_VISUAL: return "VISUAL";
+        case TYPE_INITIALIZING: return "INITIALIZING";
+        case TYPE_DATA: return "DATA";
+        case TYPE_TXT: return "TXT";
+        case TYPE_JPG: return "JPG";
+        case TYPE_MP4: return "MP4";
+        case TYPE_END: return "END";
+        case TYPE_RIGHT: return "RIGHT";
+        case TYPE_LEFT: return "LEFT";
+        case TYPE_DOWN: return "DOWN";
+        case TYPE_UP: return "UP";
+        case TYPE_ERROR: return "ERROR";
+        case TYPE_EXIT: return "EXIT";
+        case TYPE_FINISH: return "FINISH";
+        default: return "UNKNOWN";
+    }
+}
+
+static void log_frame(const char *direction, uint32_t ifindex, const uint8_t *frame,
+                      size_t frame_size, ssize_t io_bytes)
+{
+    if (message_log_fd < 0 || frame == NULL || frame_size < 3 || frame[0] != 126) {
+        return;
+    }
+
+    uint8_t size = frame[1] & 0x1F;
+    uint8_t seq = (uint8_t)(((frame[1] >> 5) | (frame[2] << 3)) & 0x3F);
+    uint8_t type = (frame[2] >> 3) & 0x1F;
+
+    dprintf(message_log_fd,
+            "[%s] if=%u bytes=%zd frame=%zu seq=%u type=%u(%s) payload=%u raw=",
+            direction, ifindex, io_bytes, frame_size, seq, type, message_type_name(type), size);
+
+    for (size_t i = 0; i < frame_size; i++) {
+        dprintf(message_log_fd, "%02x", frame[i]);
+        if (i + 1 < frame_size) {
+            dprintf(message_log_fd, " ");
+        }
+    }
+    dprintf(message_log_fd, "\n");
+}
+
+int open_message_log_tty(const char *tty_path)
+{
+    if (tty_path == NULL || tty_path[0] == '\0') {
+        return 0;
+    }
+
+    int fd = open(tty_path, O_WRONLY | O_NOCTTY);
+    if (fd < 0) {
+        perror("Erro ao abrir terminal de log");
+        return -1;
+    }
+
+    if (message_log_fd >= 0) {
+        close(message_log_fd);
+    }
+
+    message_log_fd = fd;
+    dprintf(message_log_fd, "\n=== pacLight server message log ===\n");
+    return 0;
+}
+
+void close_message_log_tty(void)
+{
+    if (message_log_fd >= 0) {
+        dprintf(message_log_fd, "=== fim do log ===\n");
+        close(message_log_fd);
+        message_log_fd = -1;
+    }
+}
 
 int create_raw_socket(uint32_t ifindex) {
     int32_t status;
@@ -77,6 +157,7 @@ void send_message(int pac_socket, uint32_t ifindex, uint8_t *message, size_t *fi
         perror("Erro ao enviar pacote");
     } else {
         fprintf(stderr,"Mensagem %d enviada: %zd bytes na interface %d\n",global_sequence.value, send_bytes, ifindex);
+        log_frame("TX", ifindex, message, *final_size, send_bytes);
     }
 }
 
@@ -93,6 +174,7 @@ int listener_mode(int32_t fd, struct message *received_msg) {
             return LISTEN_TIMEOUT; 
 
         if (buffer[0] == 126) {
+            log_frame("RX", (uint32_t)src_addr.sll_ifindex, buffer, (size_t)bytes_lidos, bytes_lidos);
 
             uint8_t size = buffer[1] & 0x1F;
             uint8_t seq = (uint8_t)(((buffer[1] >> 5) | (buffer[2] << 3)) & 0x3F);
