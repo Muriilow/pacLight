@@ -2,6 +2,7 @@
 #include <stdlib.h>         // malloc/exit
 #include <string.h>         // memset/memcpy
 #include <unistd.h>         // close()
+#include <time.h>
 
 #include <sys/socket.h>     // socket(), bind(), sendto()
 #include <arpa/inet.h>      // htons() e manipulação de endereços
@@ -54,6 +55,8 @@ int main(int argc, char *argv[])
     const char *server_log_tty = NULL;
     struct message received_msg = {0};
     int option;
+
+    srand((unsigned)time(NULL));
 
     while ((option = getopt(argc, argv, "a:i:m:l:h")) != -1)
     {
@@ -224,33 +227,25 @@ int main(int argc, char *argv[])
         server_print_map(&game);
         printf("Iniciando o servidor!\n");
 
-        //int loop_count = 0;
         while(1)
         {   
-            //printf("loop: %d\n", loop_count);
-            //loop_count++;
-            //fprintf(stderr, "moved: %d\n", moved);
             if (moved){
-                //fprintf(stderr,"SERVER GLOBAL SEQ:%d\n", global_sequence.value);
-                //Envia o mapa e espera o ACK correspondente
+                    //Envia o mapa e espera o ACK correspondente
                     send_map(file_desc, ifindex, &game);
                 }
                 moved = 0;
+
             //Esperando comando do player (ja com a nova sequencia)
             result = -4;
-            //fprintf(stderr,"GLOBAL SEQ BEFORE MOVE: %d\n",global_sequence.value);
+
             while(result < 10 || result > 13){
-                //printf("waiting input\n");
                 raw_type = listener_mode(file_desc, &received_msg);
                 result = handle_listen_result(file_desc, ifindex, raw_type, &received_msg, global_sequence.value);
                 free_message_data(&received_msg);
             }
                 moved = 1;
 
-
-            //fprintf(stderr,"GLOBAL SEQ AFTER MOVE: %d\n",global_sequence.value);
             //Aqui trataremos a logica do jogo (Sequencia ja avancou no final do handle_listen_result)
-            //printf("Comando %d recebido!\n", result);
             int direction = -1;
             switch (result)
             {

@@ -11,6 +11,16 @@
 //ir para a linah 132
 struct global_sequence global_sequence = {0};
 
+static uint8_t normalize_sequence(uint8_t seq)
+{
+    return (uint8_t)(seq & 0x3F);
+}
+
+static uint8_t previous_sequence(uint8_t seq)
+{
+    return normalize_sequence((uint8_t)(seq - 1));
+}
+
 static void free_message_data(struct message *msg)
 {
     if (msg != NULL && msg->data != NULL) {
@@ -472,19 +482,21 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
 
 int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct message *received_msg, uint8_t expected_seq) 
 {
+    uint8_t expected = normalize_sequence(expected_seq);
+
     if (listen_return == LISTEN_TIMEOUT) 
         return listen_return;
 
     if (listen_return == LISTEN_CRC_ERROR) 
     {
         //fprintf(stderr, "ERRO DE CRC\n");
-        send_nack(fd, ifindex, expected_seq);
+        send_nack(fd, ifindex, expected);
         return listen_return;
     }
 
     if (listen_return == TYPE_ACK || listen_return == TYPE_NACK)
     {
-        if (received_msg->sequence == expected_seq)
+        if (normalize_sequence(received_msg->sequence) == expected)
         {
             if (listen_return == TYPE_ACK)
                 next_sequence();
@@ -494,20 +506,21 @@ int handle_listen_result(int fd, uint32_t ifindex, int listen_return, struct mes
     }
 
     // Para pacotes de dados/comandos
-    if (received_msg->sequence != expected_seq)
+    uint8_t received = normalize_sequence(received_msg->sequence);
+    if (received != expected)
     {
-        // Se a sequência for menor, o outro lado pode não ter recebido nosso ACK anterior
-        if (received_msg->sequence < expected_seq){
+        // Stop-and-wait: o unico pacote antigo aceitavel e o anterior modulo 64.
+        if (received == previous_sequence(expected)){
             //fprintf(stderr, "ERRO DE SEQUENCIA - Recebido:%d Esperado:%d\n",received_msg->sequence, expected_seq);
-            send_ack(fd, ifindex, received_msg->sequence);
+            send_ack(fd, ifindex, received);
         }else{
             //fprintf(stderr, "ERRO DE SEQUENCIA - Recebido:%d Esperado:%d\n",received_msg->sequence, expected_seq);
-            send_nack(fd, ifindex, expected_seq);
+            send_nack(fd, ifindex, expected);
         } 
         return LISTEN_SEQ_ERROR;
     }
 
-    send_ack(fd, ifindex, received_msg->sequence);
+    send_ack(fd, ifindex, received);
     next_sequence();
     return listen_return;
 }
