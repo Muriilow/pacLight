@@ -176,6 +176,23 @@ void send_nack(int fd, uint32_t ifindex, uint8_t seq) {
     free(msg);
 }
 
+static int wait_ack_for_current_sequence(int fd, uint32_t ifindex, struct message *ack_msg, uint8_t expected_seq)
+{
+    uint8_t expected = normalize_sequence(expected_seq);
+
+    while (1) {
+        int raw_type = listener_mode(fd, ack_msg);
+
+        if ((raw_type == TYPE_ACK || raw_type == TYPE_NACK) &&
+            normalize_sequence(ack_msg->sequence) != expected) {
+            free_message_data(ack_msg);
+            continue;
+        }
+
+        return handle_listen_result(fd, ifindex, raw_type, ack_msg, expected);
+    }
+}
+
 void send_map(int fd, uint32_t ifindex, GameState *game)
 {
     int side = game->visibility_radius;
@@ -206,7 +223,6 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     uint32_t total_size = (uint32_t)k;
     
     int result = -4;
-    int raw_type;
     struct message ack_addr = {0};
     uint32_t i;
     int vision = game->visibility_radius;
@@ -218,8 +234,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     {   
         //printf("VIS ");
         send_message(fd, ifindex, buffer, &final_size);
-        raw_type = listener_mode(fd, &ack_addr);
-        result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+        result = wait_ack_for_current_sequence(fd, ifindex, &ack_addr, global_sequence.value);
 
         if(ack_addr.data) {
             free(ack_addr.data);
@@ -243,8 +258,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         while(result != TYPE_ACK){
             //printf("MAP ");
             send_message(fd, ifindex, buffer, &final_size);
-            raw_type = listener_mode(fd, &ack_addr);
-            result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+            result = wait_ack_for_current_sequence(fd, ifindex, &ack_addr, global_sequence.value);
             free_message_data(&ack_addr);
         }
 
@@ -263,8 +277,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
         while(result != TYPE_ACK){
             //printf("LAST MAP ");
             send_message(fd, ifindex, buffer, &final_size);
-            raw_type = listener_mode(fd, &ack_addr);
-            result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+            result = wait_ack_for_current_sequence(fd, ifindex, &ack_addr, global_sequence.value);
             free_message_data(&ack_addr);
         }
 
@@ -284,8 +297,7 @@ void send_map(int fd, uint32_t ifindex, GameState *game)
     {   
         //printf("END ");
         send_message(fd, ifindex, buffer, &final_size);
-        raw_type = listener_mode(fd, &ack_addr);
-        result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+        result = wait_ack_for_current_sequence(fd, ifindex, &ack_addr, global_sequence.value);
 
         if(ack_addr.data) {
             free(ack_addr.data);
@@ -362,7 +374,6 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
         return;
     }
     int result = -4;
-    int raw_type;
     struct message ack_addr = {0};
 
     struct message *msg = create_message(n_size, type, global_sequence.value, name);
@@ -372,8 +383,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     while(result != TYPE_ACK)
     {   
         send_message(fd, ifindex, buffer, &final_size);
-        raw_type = listener_mode(fd, &ack_addr);
-        result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+        result = wait_ack_for_current_sequence(fd, ifindex, &ack_addr, global_sequence.value);
 
         if(ack_addr.data) {
             free(ack_addr.data);
@@ -418,8 +428,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
             {
                 //printf("DATA %d ", global_sequence.value);
                 send_message(fd, ifindex, buffer, &final_size);
-                raw_type = listener_mode(fd, &ack_addr);
-                result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+                result = wait_ack_for_current_sequence(fd, ifindex, &ack_addr, global_sequence.value);
                 free_message_data(&ack_addr);
             }
             if(buffer)
@@ -438,8 +447,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     {   
         //printf("DATA %d ", global_sequence.value);
         send_message(fd, ifindex, buffer, &final_size);
-        raw_type = listener_mode(fd, &ack_addr);
-        result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+        result = wait_ack_for_current_sequence(fd, ifindex, &ack_addr, global_sequence.value);
 
         if(ack_addr.data) {
             free(ack_addr.data);
@@ -460,8 +468,7 @@ void send_file(int fd, uint32_t ifindex, char* name, uint32_t type){
     {   
         //printf("END ");
         send_message(fd, ifindex, buffer, &final_size);
-        raw_type = listener_mode(fd, &ack_addr);
-        result = handle_listen_result(fd, ifindex, raw_type, &ack_addr, global_sequence.value);
+        result = wait_ack_for_current_sequence(fd, ifindex, &ack_addr, global_sequence.value);
 
         if(result == TYPE_ACK){
             //fprintf(stderr, "ACK RECEBIDO\n");
