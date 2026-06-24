@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
                 if(result == TYPE_JPG || result == TYPE_TXT || result == TYPE_MP4){
                     wait_file(file_desc, ifindex, result, (char*)received_msg.data);
                     free_message_data(&received_msg);
-                } else if(result == TYPE_FINISH){
+                } else if(result == TYPE_EXIT){
                     free_message_data(&received_msg);
                     free_message_data(&msg);
                     close(file_desc);

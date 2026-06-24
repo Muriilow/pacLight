@@ -38,7 +38,6 @@ static const char *message_type_name(uint8_t type)
         case TYPE_UP: return "UP";
         case TYPE_ERROR: return "ERROR";
         case TYPE_EXIT: return "EXIT";
-        case TYPE_FINISH: return "FINISH";
         default: return "UNKNOWN";
     }
 }

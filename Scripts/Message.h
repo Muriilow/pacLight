@@ -22,7 +22,6 @@
 #define TYPE_UP 13
 #define TYPE_ERROR 15 
 #define TYPE_EXIT 16 
-#define TYPE_FINISH 17
 
 #define MAX_DATA 31
 

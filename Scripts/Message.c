@@ -672,7 +672,7 @@ char* wait_map(int fd, uint32_t ifindex){
     return map_view;
 }
 void end_game(int fd, uint32_t ifindex){
-    struct message *msg = create_message(0, TYPE_FINISH, global_sequence.value, NULL);
+    struct message *msg = create_message(0, TYPE_EXIT, global_sequence.value, NULL);
     size_t final_size;
     uint8_t *buffer = serialize_message(msg, &final_size);
     
